@@ -96,9 +96,19 @@ router.post('/sms/incoming', express.json(), async (req, res) => {
 
     // Try different possible field names that TextMagic might use
     const body = req.body || {};
-    const from = body.from || body.sender || body.phone || body.number;
-    const text = body.text || body.message || body.body || body.content;
-    const messageId = body.message_id || body.messageId || body.id;
+    
+    // TextMagic common field names
+    const from = body.from || body.sender || body.phone || body.number || 
+                 body.From || body.Sender || body.Phone || body.Number ||
+                 body.phoneNumber || body.senderNumber;
+                 
+    const text = body.text || body.message || body.body || body.content ||
+                 body.Text || body.Message || body.Body || body.Content ||
+                 body.messageText || body.sms || body.SMS;
+                 
+    const messageId = body.message_id || body.messageId || body.id ||
+                      body.Message_ID || body.MessageId || body.ID ||
+                      body.msgId || body.msg_id;
     
     console.log('Extracted fields:');
     console.log('- from:', from);
