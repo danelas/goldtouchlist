@@ -135,8 +135,10 @@ async function setupMissingTables() {
       console.log('✅ Unlock audit log table already exists');
     }
 
-    // Create indexes for better performance
+    // Create indexes for better performance (only for existing columns)
     console.log('📈 Creating indexes...');
+    
+    // Basic indexes that should always exist
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_leads_city ON leads(city);
       CREATE INDEX IF NOT EXISTS idx_leads_service_type ON leads(service_type);
@@ -144,11 +146,36 @@ async function setupMissingTables() {
       CREATE INDEX IF NOT EXISTS idx_unlocks_lead_id ON unlocks(lead_id);
       CREATE INDEX IF NOT EXISTS idx_unlocks_provider_id ON unlocks(provider_id);
       CREATE INDEX IF NOT EXISTS idx_unlocks_status ON unlocks(status);
-      CREATE INDEX IF NOT EXISTS idx_unlocks_idempotency_key ON unlocks(idempotency_key);
-      CREATE INDEX IF NOT EXISTS idx_unlocks_ttl_expires_at ON unlocks(ttl_expires_at);
       CREATE INDEX IF NOT EXISTS idx_providers_phone ON providers(phone);
       CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
     `);
+    
+    // Check if idempotency_key column exists before creating index
+    const idempotencyColumnCheck = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'unlocks' 
+      AND column_name = 'idempotency_key';
+    `);
+    
+    if (idempotencyColumnCheck.rows.length > 0) {
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_unlocks_idempotency_key ON unlocks(idempotency_key);`);
+      console.log('✅ idempotency_key index created');
+    }
+    
+    // Check if ttl_expires_at column exists before creating index
+    const ttlColumnCheck = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'unlocks' 
+      AND column_name = 'ttl_expires_at';
+    `);
+    
+    if (ttlColumnCheck.rows.length > 0) {
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_unlocks_ttl_expires_at ON unlocks(ttl_expires_at);`);
+      console.log('✅ ttl_expires_at index created');
+    }
+    
     console.log('✅ Indexes created successfully');
 
     console.log('🎉 Database setup completed successfully!');
