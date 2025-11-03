@@ -12,6 +12,7 @@ const apiRoutes = require('./routes/api');
 const unlockRoutes = require('./routes/unlocks');
 const providerRoutes = require('./routes/providers');
 const providerUnifiedRoutes = require('./routes/providers-unified');
+const testProviderRoutes = require('./routes/test-provider');
 const analyticsRoutes = require('./routes/analytics');
 const recoveryRoutes = require('./routes/recovery');
 const diagnosticsRoutes = require('./routes/diagnostics');
@@ -82,6 +83,7 @@ app.use('/unlocks', unlockRoutes);
 app.use('/providers', providerRoutes);
 app.use('/api/providers', providerRoutes); // API routes for provider management
 app.use('/api/provider', providerUnifiedRoutes); // Unified provider management endpoint
+app.use('/test', testProviderRoutes); // Test provider creation endpoints
 app.use('/analytics', analyticsRoutes);
 app.use('/recovery', recoveryRoutes);
 app.use('/diagnostics', diagnosticsRoutes);
@@ -96,6 +98,11 @@ app.get('/provider-urls', (req, res) => {
 // Admin Dashboard
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin-dashboard.html'));
+});
+
+// Quick setup page to add Dan
+app.get('/setup', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'add-dan.html'));
 });
 
 // Provider Management UI
