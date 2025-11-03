@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Dan - Simple Version</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            width: 100%;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Simple Add Dan</h1>
+        
+        <p><strong>Direct API Links (click to test):</strong></p>
+        
+        <a href="/test/hello" class="btn" target="_blank">
+            🔧 Test Hello Endpoint (GET)
+        </a>
+        
+        <button class="btn" onclick="window.location.href='/api/provider/manage'">
+            📋 Check Providers (GET)
+        </button>
+        
+        <button class="btn" onclick="addDanSimple()">
+            ➕ Add Dan (POST - JavaScript)
+        </button>
+        
+        <button class="btn" onclick="window.location.href='/admin'">
+            🏠 Go to Admin Dashboard
+        </button>
+        
+        <div id="result" class="result">
+            <p><strong>Instructions:</strong></p>
+            <ol>
+                <li>First click "Test Hello Endpoint" - should open new tab with JSON response</li>
+                <li>Then click "Check Providers" - should show current provider list</li>
+                <li>Then click "Add Dan" - will use JavaScript to add Dan</li>
+                <li>Check browser console (F12) for any errors</li>
+            </ol>
+        </div>
+        
+        <div id="debug" class="result" style="display: none;">
+            <h3>Debug Info:</h3>
+            <pre id="debugText"></pre>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔧 JavaScript loaded successfully');
+        
+        function log(message) {
+            console.log(message);
+            const debugDiv = document.getElementById('debug');
+            const debugText = document.getElementById('debugText');
+            debugDiv.style.display = 'block';
+            debugText.textContent += new Date().toISOString() + ': ' + message + '\n';
+        }
+        
+        function showResult(message) {
+            document.getElementById('result').innerHTML = message;
+        }
+        
+        async function addDanSimple() {
+            log('🔧 addDanSimple function called');
+            
+            try {
+                showResult('⏳ Adding Dan...');
+                log('📡 Making fetch request to /test/add-dan');
+                
+                const response = await fetch('/test/add-dan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                log('📥 Response received: ' + response.status + ' ' + response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('📦 Response data: ' + JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    showResult(`
+                        <h3>✅ Success!</h3>
+                        <p><strong>Provider ID:</strong> ${data.provider.id}</p>
+                        <p><strong>Name:</strong> ${data.provider.name}</p>
+                        <p><strong>Email:</strong> ${data.provider.email}</p>
+                        <p><strong>Phone:</strong> ${data.provider.phone}</p>
+                        <p><a href="/admin" class="btn">Go to Admin Dashboard</a></p>
+                    `);
+                } else {
+                    showResult(`
+                        <h3>❌ Failed</h3>
+                        <p><strong>Error:</strong> ${data.error}</p>
+                        <p><strong>Details:</strong> ${data.details || 'No details'}</p>
+                    `);
+                }
+                
+            } catch (error) {
+                log('❌ Error: ' + error.message);
+                showResult(`
+                    <h3>❌ Error</h3>
+                    <p><strong>Message:</strong> ${error.message}</p>
+                    <p>Check the debug section below and browser console for more details.</p>
+                `);
+            }
+        }
+        
+        // Test if JavaScript is working
+        log('🚀 Page loaded, JavaScript is working');
+        
+        // Test fetch API
+        if (typeof fetch === 'undefined') {
+            log('❌ Fetch API not available');
+        } else {
+            log('✅ Fetch API available');
+        }
+    </script>
+</body>
+</html>

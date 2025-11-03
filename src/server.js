@@ -105,6 +105,11 @@ app.get('/setup', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'add-dan.html'));
 });
 
+// Simple setup page (for debugging)
+app.get('/simple-setup', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'simple-add-dan.html'));
+});
+
 // Provider Management UI
 app.get('/admin/providers', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'provider-management.html'));

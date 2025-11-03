@@ -124,4 +124,102 @@ router.post('/add-test-providers', express.json(), async (req, res) => {
   }
 });
 
+// Server-side form handler (no JavaScript needed)
+router.get('/add-dan-form', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Add Dan - Server Form</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+            .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+            .btn { background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🚀 Add Dan - Server Form</h1>
+            <form method="POST" action="/test/add-dan-server">
+                <p>Click the button below to add Dan (+19546144683) as a provider:</p>
+                <button type="submit" class="btn">➕ Add Dan (Server-side)</button>
+            </form>
+            <br>
+            <a href="/admin">🏠 Go to Admin Dashboard</a>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// Server-side form processor
+router.post('/add-dan-server', express.urlencoded({ extended: true }), async (req, res) => {
+  try {
+    console.log('🔧 SERVER FORM: /test/add-dan-server called');
+    
+    // Generate unique provider ID
+    const providerId = await Provider.generateUniqueId();
+    
+    // Create Dan's provider data
+    const danProviderData = {
+      id: providerId,
+      name: 'Dan',
+      email: 'dan@goldtouchlist.com',
+      phone: '+19546144683',
+      wordpress_user_id: null,
+      slug: 'dan-provider',
+      service_areas: ['Miami', 'Fort Lauderdale', 'Hollywood'],
+      is_verified: true,
+      first_lead_used: false,
+      sms_opted_out: false
+    };
+
+    const provider = await Provider.create(danProviderData);
+    console.log('Dan provider created via server form:', provider.id);
+
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Success!</title>
+          <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+              .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+              .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin: 20px 0; }
+              .btn { background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 8px; text-decoration: none; display: inline-block; }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <h1>✅ Success!</h1>
+              <div class="success">
+                  <p><strong>Dan has been added successfully!</strong></p>
+                  <p><strong>Provider ID:</strong> ${provider.id}</p>
+                  <p><strong>Name:</strong> ${provider.name}</p>
+                  <p><strong>Email:</strong> ${provider.email}</p>
+                  <p><strong>Phone:</strong> ${provider.phone}</p>
+              </div>
+              <a href="/admin" class="btn">🏠 Go to Admin Dashboard</a>
+              <a href="/test/add-dan-form" class="btn">🔄 Add Another</a>
+          </div>
+      </body>
+      </html>
+    `);
+
+  } catch (error) {
+    console.error('Error adding Dan via server form:', error);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Error</title></head>
+      <body>
+          <h1>❌ Error</h1>
+          <p>Failed to add Dan: ${error.message}</p>
+          <a href="/test/add-dan-form">🔄 Try Again</a>
+      </body>
+      </html>
+    `);
+  }
+});
+
 module.exports = router;
