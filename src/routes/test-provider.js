@@ -2,9 +2,22 @@ const express = require('express');
 const router = express.Router();
 const Provider = require('../models/Provider');
 
+// Simple test endpoint to verify routing works
+router.get('/hello', (req, res) => {
+  console.log('🔧 TEST: /test/hello called');
+  res.json({
+    success: true,
+    message: 'Test routes are working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Quick test endpoint to add Dan
 router.post('/add-dan', express.json(), async (req, res) => {
   try {
+    console.log('🔧 TEST ENDPOINT: /test/add-dan called');
+    console.log('📥 Request headers:', req.headers);
+    console.log('📥 Request body:', req.body);
     console.log('Adding Dan as test provider...');
     
     // Generate unique provider ID

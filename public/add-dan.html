@@ -78,6 +78,10 @@
             📋 Check Current Providers
         </button>
         
+        <button class="btn" onclick="testRouting()">
+            🔧 Test Routing
+        </button>
+        
         <button class="btn" onclick="goToDashboard()">
             🏠 Go to Admin Dashboard
         </button>
@@ -101,8 +105,10 @@
         }
 
         async function addDan() {
+            console.log('🔧 Adding Dan - button clicked');
             showLoading();
             try {
+                console.log('📡 Making POST request to /test/add-dan');
                 const response = await fetch('/test/add-dan', {
                     method: 'POST',
                     headers: {
@@ -110,7 +116,15 @@
                     }
                 });
                 
+                console.log('📥 Response status:', response.status);
+                console.log('📥 Response ok:', response.ok);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('📦 Response data:', data);
                 
                 if (data.success) {
                     showResult(`✅ Success! Dan added as ${data.provider.id}<br>
@@ -118,10 +132,11 @@
                                📱 Phone: ${data.provider.phone}<br>
                                🏷️ ID: ${data.provider.id}`);
                 } else {
-                    showResult(`❌ Failed: ${data.error}`, false);
+                    showResult(`❌ Failed: ${data.error}<br>Details: ${data.details || 'No details'}`, false);
                 }
             } catch (error) {
-                showResult(`❌ Error: ${error.message}`, false);
+                console.error('❌ Error adding Dan:', error);
+                showResult(`❌ Error: ${error.message}<br>Check browser console for details`, false);
             }
         }
 
@@ -178,12 +193,35 @@
             }
         }
 
+        async function testRouting() {
+            console.log('🔧 Testing routing...');
+            showLoading();
+            try {
+                const response = await fetch('/test/hello');
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`✅ Routing works! Message: ${data.message}<br>Time: ${data.timestamp}`);
+                } else {
+                    showResult(`❌ Routing test failed: ${data.error}`, false);
+                }
+            } catch (error) {
+                console.error('❌ Routing test error:', error);
+                showResult(`❌ Routing Error: ${error.message}`, false);
+            }
+        }
+
         function goToDashboard() {
             window.location.href = '/admin';
         }
 
-        // Auto-check providers on page load
-        window.addEventListener('DOMContentLoaded', checkProviders);
+        // Auto-check providers on page load (commented out to avoid interference)
+        // window.addEventListener('DOMContentLoaded', checkProviders);
+        
+        // Show initial message
+        window.addEventListener('DOMContentLoaded', function() {
+            showResult('🚀 Ready! Click "Add Dan" to get started or "Check Current Providers" to see existing data.');
+        });
     </script>
 </body>
 </html>
