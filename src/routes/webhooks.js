@@ -5,6 +5,35 @@ const WebhookController = require('../controllers/webhookController');
 const LeadProcessor = require('../services/LeadProcessor');
 const migration = require('../migrations/001_add_first_lead_flag');
 
+// WordPress user creation webhook endpoint
+router.post('/wordpress/user-created', express.json(), WebhookController.handleWordPressUserCreation);
+
+// GET handler for WordPress webhook (for testing)
+router.get('/wordpress/user-created', (req, res) => {
+  console.log('=== GET REQUEST TO WORDPRESS WEBHOOK ===');
+  console.log('WordPress should send POST requests to this URL');
+  console.log('=== END GET REQUEST ===');
+  
+  res.json({
+    message: 'WordPress user creation webhook endpoint is ready',
+    method: 'POST required',
+    url: `${process.env.DOMAIN}/webhooks/wordpress/user-created`,
+    instructions: 'Configure this URL in WordPress to trigger on user registration',
+    expected_payload: {
+      user_id: 123,
+      email: 'user@example.com',
+      name: 'John Doe',
+      display_name: 'John Doe',
+      first_name: 'John',
+      last_name: 'Doe',
+      phone: '+1234567890',
+      user_login: 'johndoe',
+      service_areas: ['Miami', 'Fort Lauderdale']
+    },
+    status: 'ready'
+  });
+});
+
 // FluentForms webhook endpoint
 router.post('/fluentforms', express.json(), WebhookController.handleFluentFormsWebhook);
 
@@ -220,6 +249,53 @@ router.post('/test/payment-complete', express.json(), async (req, res) => {
     res.status(500).json({ 
       error: 'Internal server error',
       details: error.message 
+    });
+  }
+});
+
+// Test WordPress user creation webhook
+router.post('/test/wordpress-user', express.json(), async (req, res) => {
+  try {
+    console.log('🧪 Testing WordPress user creation webhook...');
+    
+    // Create a test user payload
+    const testUser = {
+      user_id: Date.now(), // Use timestamp as unique ID
+      email: req.body.email || `test${Date.now()}@example.com`,
+      name: req.body.name || 'Test Provider',
+      display_name: req.body.display_name || 'Test Provider',
+      first_name: req.body.first_name || 'Test',
+      last_name: req.body.last_name || 'Provider',
+      phone: req.body.phone || '+1234567890',
+      user_login: req.body.user_login || `testuser${Date.now()}`,
+      service_areas: req.body.service_areas || ['Miami', 'Fort Lauderdale'],
+      webhook_secret: process.env.WORDPRESS_WEBHOOK_SECRET || 'test-secret'
+    };
+    
+    console.log('Test user payload:', testUser);
+    
+    // Call the WordPress webhook handler directly
+    const mockReq = { body: testUser, headers: {} };
+    const mockRes = {
+      json: (data) => data,
+      status: (code) => ({ json: (data) => ({ status: code, ...data }) })
+    };
+    
+    const result = await WebhookController.handleWordPressUserCreation(mockReq, mockRes);
+    
+    res.json({
+      success: true,
+      message: 'WordPress user creation test completed',
+      test_payload: testUser,
+      result: result
+    });
+    
+  } catch (error) {
+    console.error('WordPress user creation test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Test failed',
+      details: error.message
     });
   }
 });

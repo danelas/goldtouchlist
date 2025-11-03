@@ -82,20 +82,67 @@ class Provider {
   }
 
   static async create(providerData) {
-    const { phone, name } = providerData;
-    const cleanPhone = phone.replace(/[^\d+]/g, '');
+    // Handle both old format (phone, name) and new format (full object)
+    let cleanData;
+    
+    if (typeof providerData === 'object' && providerData.id) {
+      // New format - full provider object
+      cleanData = {
+        id: providerData.id,
+        phone: providerData.phone ? providerData.phone.replace(/[^\d+]/g, '') : null,
+        email: providerData.email || null,
+        name: providerData.name,
+        wordpress_user_id: providerData.wordpress_user_id || null,
+        slug: providerData.slug || null,
+        service_areas: providerData.service_areas || [],
+        is_verified: providerData.is_verified !== undefined ? providerData.is_verified : true,
+        first_lead_used: providerData.first_lead_used !== undefined ? providerData.first_lead_used : false,
+        sms_opted_out: providerData.sms_opted_out !== undefined ? providerData.sms_opted_out : false
+      };
+    } else {
+      // Old format - just phone and name
+      const { phone, name } = providerData;
+      const cleanPhone = phone.replace(/[^\d+]/g, '');
+      
+      // Generate provider ID (find next available)
+      const countResult = await pool.query('SELECT COUNT(*) FROM providers');
+      const nextId = `provider${parseInt(countResult.rows[0].count) + 1}`;
+      
+      cleanData = {
+        id: nextId,
+        phone: cleanPhone,
+        name: name,
+        email: null,
+        wordpress_user_id: null,
+        slug: null,
+        service_areas: [],
+        is_verified: true,
+        first_lead_used: false,
+        sms_opted_out: false
+      };
+    }
 
     const query = `
-      INSERT INTO providers (id, phone, name)
-      VALUES ($1, $2, $3)
+      INSERT INTO providers (
+        id, phone, email, name, wordpress_user_id, slug, 
+        service_areas, is_verified, first_lead_used, sms_opted_out
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
 
-    // Generate provider ID (find next available)
-    const countResult = await pool.query('SELECT COUNT(*) FROM providers');
-    const nextId = `provider${parseInt(countResult.rows[0].count) + 1}`;
-
-    const values = [nextId, cleanPhone, name];
+    const values = [
+      cleanData.id,
+      cleanData.phone,
+      cleanData.email,
+      cleanData.name,
+      cleanData.wordpress_user_id,
+      cleanData.slug,
+      cleanData.service_areas,
+      cleanData.is_verified,
+      cleanData.first_lead_used,
+      cleanData.sms_opted_out
+    ];
 
     try {
       const result = await pool.query(query, values);
@@ -103,6 +150,34 @@ class Provider {
     } catch (error) {
       console.error('Error creating provider:', error);
       throw error;
+    }
+  }
+
+  static async generateUniqueId() {
+    // Find the highest existing provider number
+    const query = `
+      SELECT id FROM providers 
+      WHERE id ~ '^provider[0-9]+$' 
+      ORDER BY CAST(SUBSTRING(id FROM 9) AS INTEGER) DESC 
+      LIMIT 1
+    `;
+    
+    try {
+      const result = await pool.query(query);
+      let nextNumber = 1;
+      
+      if (result.rows.length > 0) {
+        const lastId = result.rows[0].id;
+        const lastNumber = parseInt(lastId.replace('provider', ''));
+        nextNumber = lastNumber + 1;
+      }
+      
+      return `provider${nextNumber}`;
+    } catch (error) {
+      console.error('Error generating unique provider ID:', error);
+      // Fallback to count-based method
+      const countResult = await pool.query('SELECT COUNT(*) FROM providers');
+      return `provider${parseInt(countResult.rows[0].count) + 1}`;
     }
   }
 

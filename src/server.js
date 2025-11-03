@@ -11,6 +11,7 @@ const webhookRoutes = require('./routes/webhooks');
 const apiRoutes = require('./routes/api');
 const unlockRoutes = require('./routes/unlocks');
 const providerRoutes = require('./routes/providers');
+const providerUnifiedRoutes = require('./routes/providers-unified');
 const analyticsRoutes = require('./routes/analytics');
 const recoveryRoutes = require('./routes/recovery');
 const diagnosticsRoutes = require('./routes/diagnostics');
@@ -79,6 +80,8 @@ app.use('/webhooks', webhookRoutes);
 app.use('/api', apiRoutes);
 app.use('/unlocks', unlockRoutes);
 app.use('/providers', providerRoutes);
+app.use('/api/providers', providerRoutes); // API routes for provider management
+app.use('/api/provider', providerUnifiedRoutes); // Unified provider management endpoint
 app.use('/analytics', analyticsRoutes);
 app.use('/recovery', recoveryRoutes);
 app.use('/diagnostics', diagnosticsRoutes);
@@ -88,6 +91,16 @@ app.use('/form', providerRoutes); // Also handle /form/:slug routes
 // Provider URLs page
 app.get('/provider-urls', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'provider-urls.html'));
+});
+
+// Admin Dashboard
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'admin-dashboard.html'));
+});
+
+// Provider Management UI
+app.get('/admin/providers', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'provider-management.html'));
 });
 
 // Form page for providers
@@ -105,6 +118,10 @@ app.get('/', (req, res) => {
       providers: '/providers',
       unlocks: '/unlocks',
       provider_urls: '/provider-urls',
+      admin: {
+        dashboard: '/admin',
+        provider_management: '/admin/providers'
+      },
       analytics: {
         provider_performance: '/analytics/providers',
         recent_activity: '/analytics/recent-activity?days=7',
@@ -178,8 +195,13 @@ app.listen(PORT, () => {
     } else {
       console.log('Database connected successfully');
       
-      // Run database migrations
+      // Run database setup and migrations
       try {
+        // First ensure all tables exist
+        const setupMissingTables = require('./migrations/setup_missing_tables');
+        await setupMissingTables();
+        
+        // Then run specific migrations
         const addMissingLeadColumns = require('./migrations/add_missing_lead_columns');
         await addMissingLeadColumns();
         

@@ -70,7 +70,7 @@ Run the schema creation script on your existing database:
 1. Create a Product in Stripe Dashboard
 2. Add a fixed Price of $20.00 USD
 3. Copy the Price ID to `STRIPE_PRICE_ID`
-4. Set up webhook endpoint: `https://your-domain.com/webhooks/stripe`
+4. Set up webhook endpoint: `https://pay.goldtouchlist.com/webhooks/stripe`
 5. Listen for `checkout.session.completed` events
 6. Copy webhook secret to `STRIPE_WEBHOOK_SECRET`
 
@@ -78,12 +78,12 @@ Run the schema creation script on your existing database:
 
 1. Sign up for TextMagic account
 2. Get API credentials from dashboard
-3. Set up incoming webhook: `https://your-domain.com/webhooks/sms/incoming`
+3. Set up incoming webhook: `https://pay.goldtouchlist.com/webhooks/sms/incoming`
 
 ### 5. FluentForms Configuration
 
 Set up a webhook in FluentForms to post to:
-`https://your-domain.com/webhooks/fluentforms`
+`https://pay.goldtouchlist.com/webhooks/fluentforms`
 
 Include webhook secret header: `X-Webhook-Secret: your_webhook_secret`
 

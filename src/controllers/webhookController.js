@@ -21,6 +21,79 @@ const fluentFormsSchema = Joi.object({
 });
 
 class WebhookController {
+  static async handleWordPressUserCreation(req, res) {
+    try {
+      console.log('Received WordPress user creation webhook:', JSON.stringify(req.body, null, 2));
+
+      // Validate webhook secret if configured
+      if (process.env.WORDPRESS_WEBHOOK_SECRET && process.env.NODE_ENV !== 'development') {
+        const receivedSecret = req.headers['x-webhook-secret'] || req.body.webhook_secret;
+        if (receivedSecret !== process.env.WORDPRESS_WEBHOOK_SECRET) {
+          console.error('Invalid WordPress webhook secret');
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+      }
+
+      // Extract user data from WordPress/HivePress
+      const userData = req.body;
+      
+      // Validate required fields
+      if (!userData.user_id || !userData.email) {
+        return res.status(400).json({ 
+          error: 'Missing required fields', 
+          required: ['user_id', 'email'],
+          received: Object.keys(userData)
+        });
+      }
+
+      // Generate unique provider ID
+      const Provider = require('../models/Provider');
+      const providerId = await Provider.generateUniqueId();
+      
+      // Determine the best name to use (priority order)
+      let providerName = userData.name || 
+                        userData.display_name || 
+                        userData.first_name || 
+                        userData.email.split('@')[0];
+      
+      // If we have both first and last name, combine them
+      if (userData.first_name && userData.last_name) {
+        providerName = `${userData.first_name} ${userData.last_name}`;
+      }
+      
+      // Create provider record
+      const providerData = {
+        id: providerId,
+        wordpress_user_id: userData.user_id,
+        email: userData.email,
+        phone: userData.phone || null,
+        name: providerName,
+        slug: userData.user_login || providerId,
+        service_areas: userData.service_areas || [],
+        is_verified: false, // New users start unverified
+        first_lead_used: false,
+        sms_opted_out: !userData.phone // If no phone, opt out of SMS
+      };
+
+      const provider = await Provider.create(providerData);
+      console.log('Provider created from WordPress user:', provider.id);
+
+      res.json({ 
+        success: true, 
+        providerId: provider.id,
+        wordpress_user_id: userData.user_id,
+        message: 'Provider account created successfully'
+      });
+
+    } catch (error) {
+      console.error('Error handling WordPress user creation webhook:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
+    }
+  }
+
   static async handleFluentFormsWebhook(req, res) {
     try {
       console.log('Received FluentForms webhook:', JSON.stringify(req.body, null, 2));
