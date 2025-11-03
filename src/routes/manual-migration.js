@@ -14,6 +14,10 @@ router.post('/run-migrations', async (req, res) => {
     const addUnlockConstraints = require('../migrations/add_unlock_constraints');
     await addUnlockConstraints();
     
+    // Run the unlock audit columns migration
+    const addUnlockAuditColumns = require('../migrations/add_unlock_audit_columns');
+    await addUnlockAuditColumns();
+    
     console.log('✅ Manual migration completed successfully');
     
     res.json({

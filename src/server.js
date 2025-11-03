@@ -232,6 +232,9 @@ app.listen(PORT, () => {
         
         const addUnlockConstraints = require('./migrations/add_unlock_constraints');
         await addUnlockConstraints();
+        
+        const addUnlockAuditColumns = require('./migrations/add_unlock_audit_columns');
+        await addUnlockAuditColumns();
       } catch (migrationError) {
         console.error('Migration error:', migrationError);
       }
