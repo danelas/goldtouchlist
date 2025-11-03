@@ -13,6 +13,7 @@ const unlockRoutes = require('./routes/unlocks');
 const providerRoutes = require('./routes/providers');
 const providerUnifiedRoutes = require('./routes/providers-unified');
 const testProviderRoutes = require('./routes/test-provider');
+const manualMigrationRoutes = require('./routes/manual-migration');
 const analyticsRoutes = require('./routes/analytics');
 const recoveryRoutes = require('./routes/recovery');
 const diagnosticsRoutes = require('./routes/diagnostics');
@@ -84,6 +85,7 @@ app.use('/providers', providerRoutes);
 app.use('/api/providers', providerRoutes); // API routes for provider management
 app.use('/api/provider', providerUnifiedRoutes); // Unified provider management endpoint
 app.use('/test', testProviderRoutes); // Test provider creation endpoints
+app.use('/migrate', manualMigrationRoutes); // Manual migration endpoints
 app.use('/analytics', analyticsRoutes);
 app.use('/recovery', recoveryRoutes);
 app.use('/diagnostics', diagnosticsRoutes);
@@ -108,6 +110,11 @@ app.get('/setup', (req, res) => {
 // Simple setup page (for debugging)
 app.get('/simple-setup', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'simple-add-dan.html'));
+});
+
+// Database fix page
+app.get('/fix-database', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'fix-database.html'));
 });
 
 // Provider Management UI
