@@ -94,7 +94,10 @@ async function setupMissingTables() {
           checkout_session_id VARCHAR(255),
           last_sent_at TIMESTAMP,
           unlocked_at TIMESTAMP,
+          idempotency_key VARCHAR(255) UNIQUE,
+          ttl_expires_at TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (lead_id) REFERENCES leads(lead_id) ON DELETE CASCADE,
           FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
         );
@@ -141,6 +144,8 @@ async function setupMissingTables() {
       CREATE INDEX IF NOT EXISTS idx_unlocks_lead_id ON unlocks(lead_id);
       CREATE INDEX IF NOT EXISTS idx_unlocks_provider_id ON unlocks(provider_id);
       CREATE INDEX IF NOT EXISTS idx_unlocks_status ON unlocks(status);
+      CREATE INDEX IF NOT EXISTS idx_unlocks_idempotency_key ON unlocks(idempotency_key);
+      CREATE INDEX IF NOT EXISTS idx_unlocks_ttl_expires_at ON unlocks(ttl_expires_at);
       CREATE INDEX IF NOT EXISTS idx_providers_phone ON providers(phone);
       CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
     `);

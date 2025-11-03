@@ -219,6 +219,9 @@ app.listen(PORT, () => {
         
         const addProviderEmailColumn = require('./migrations/add_provider_email_column');
         await addProviderEmailColumn();
+        
+        const addIdempotencyKey = require('./migrations/add_idempotency_key');
+        await addIdempotencyKey();
       } catch (migrationError) {
         console.error('Migration error:', migrationError);
       }
