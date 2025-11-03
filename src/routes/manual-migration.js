@@ -10,6 +10,10 @@ router.post('/run-migrations', async (req, res) => {
     const addIdempotencyKey = require('../migrations/add_idempotency_key');
     await addIdempotencyKey();
     
+    // Run the unlock constraints migration
+    const addUnlockConstraints = require('../migrations/add_unlock_constraints');
+    await addUnlockConstraints();
+    
     console.log('✅ Manual migration completed successfully');
     
     res.json({

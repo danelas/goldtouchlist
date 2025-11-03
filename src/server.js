@@ -229,6 +229,9 @@ app.listen(PORT, () => {
         
         const addIdempotencyKey = require('./migrations/add_idempotency_key');
         await addIdempotencyKey();
+        
+        const addUnlockConstraints = require('./migrations/add_unlock_constraints');
+        await addUnlockConstraints();
       } catch (migrationError) {
         console.error('Migration error:', migrationError);
       }

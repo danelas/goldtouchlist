@@ -99,7 +99,8 @@ async function setupMissingTables() {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (lead_id) REFERENCES leads(lead_id) ON DELETE CASCADE,
-          FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
+          FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE,
+          UNIQUE (lead_id, provider_id)
         );
       `);
       console.log('✅ Unlocks table created successfully');
