@@ -67,19 +67,28 @@ class WebhookController {
       // Extract phone number from various possible field formats
       let phoneNumber = null;
       
-      // Try direct phone field first
-      phoneNumber = userData.phone || userData.Phone || userData.PHONE;
+      // Try direct phone field first (including HivePress 'tel' field)
+      phoneNumber = userData.phone || userData.Phone || userData.PHONE || 
+                   userData.tel || userData.Tel || userData.TEL ||
+                   userData.telephone || userData.Telephone;
       
       // If not found, search through all fields for phone-like patterns
       if (!phoneNumber) {
         console.log('📞 Searching for phone number in all fields...');
         
         for (const [key, value] of Object.entries(userData)) {
-          // Check if field name contains 'phone', 'tel', or 'mobile'
-          if (key.toLowerCase().includes('phone') || 
-              key.toLowerCase().includes('tel') || 
-              key.toLowerCase().includes('mobile') ||
-              key.toLowerCase().includes('number')) {
+          // Check if field name contains phone-related terms or HivePress patterns
+          const keyLower = key.toLowerCase();
+          if (keyLower.includes('phone') || 
+              keyLower.includes('tel') || 
+              keyLower.includes('mobile') ||
+              keyLower.includes('number') ||
+              keyLower.includes('hp-field') ||  // HivePress field pattern
+              keyLower.includes('hp_field') ||  // Alternative HivePress pattern
+              keyLower === 'tel' ||             // Direct tel field
+              keyLower.startsWith('field_tel') || // WordPress custom field pattern
+              keyLower.endsWith('_tel') ||      // Field ending with tel
+              keyLower.endsWith('_phone')) {    // Field ending with phone
             console.log(`📞 Found potential phone field: ${key} = ${value}`);
             if (value && typeof value === 'string' && value.trim()) {
               phoneNumber = value.trim();

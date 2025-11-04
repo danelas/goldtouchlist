@@ -99,4 +99,8 @@ router.post('/test-wordpress-data', express.json(), async (req, res) => {
   }
 });
 
+// Include SMS opt-out fix routes in the debug module
+const fixSmsRoutes = require('./fix-sms-optout');
+router.use('/', fixSmsRoutes);
+
 module.exports = router;
