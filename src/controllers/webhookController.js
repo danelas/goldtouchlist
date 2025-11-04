@@ -40,6 +40,12 @@ class WebhookController {
       console.log('📋 WordPress webhook - all received fields:', Object.keys(userData));
       console.log('📋 WordPress webhook - full data structure:', JSON.stringify(userData, null, 2));
       
+      // Log each field individually to make it easier to spot phone fields
+      console.log('📋 Individual field analysis:');
+      for (const [key, value] of Object.entries(userData)) {
+        console.log(`  - ${key}: ${JSON.stringify(value)} (type: ${typeof value})`);
+      }
+      
       // Validate required fields
       if (!userData.user_id || !userData.email) {
         return res.status(400).json({ 
@@ -67,10 +73,12 @@ class WebhookController {
       // Extract phone number from various possible field formats
       let phoneNumber = null;
       
-      // Try direct phone field first (including HivePress 'tel' field)
+      // Try direct phone field first (including HivePress phone-type fields)
       phoneNumber = userData.phone || userData.Phone || userData.PHONE || 
                    userData.tel || userData.Tel || userData.TEL ||
-                   userData.telephone || userData.Telephone;
+                   userData.telephone || userData.Telephone ||
+                   userData.phone_number || userData.phoneNumber ||
+                   userData.user_phone || userData.contact_phone;
       
       // If not found, search through all fields for phone-like patterns
       if (!phoneNumber) {
@@ -96,11 +104,18 @@ class WebhookController {
             }
           }
           
-          // Check if value looks like a phone number (contains digits and common phone chars)
-          if (typeof value === 'string' && /[\d\-\(\)\+\s]{10,}/.test(value)) {
-            console.log(`📞 Found phone-like value in field ${key}: ${value}`);
-            phoneNumber = value.trim();
-            break;
+          // Check if value looks like a phone number (enhanced patterns)
+          if (typeof value === 'string') {
+            const cleanValue = value.trim();
+            // Check for US phone numbers with +1, international format, or standard formats
+            if (/^\+1[\d\-\(\)\s]{10,}/.test(cleanValue) ||           // +1 format
+                /^\+\d{1,3}[\d\-\(\)\s]{8,}/.test(cleanValue) ||      // International format
+                /^[\d\-\(\)\s]{10,}$/.test(cleanValue) ||             // Standard format
+                /^\(\d{3}\)\s?\d{3}-?\d{4}$/.test(cleanValue)) {      // (123) 456-7890 format
+              console.log(`📞 Found phone-like value in field ${key}: ${value}`);
+              phoneNumber = cleanValue;
+              break;
+            }
           }
         }
       }
