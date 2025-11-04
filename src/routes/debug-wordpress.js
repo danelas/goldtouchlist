@@ -103,4 +103,8 @@ router.post('/test-wordpress-data', express.json(), async (req, res) => {
 const fixSmsRoutes = require('./fix-sms-optout');
 router.use('/', fixSmsRoutes);
 
+// Include manual phone update routes
+const manualPhoneRoutes = require('./manual-phone-update');
+router.use('/', manualPhoneRoutes);
+
 module.exports = router;

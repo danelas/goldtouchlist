@@ -3,22 +3,31 @@ const LeadProcessor = require('../services/LeadProcessor');
 const Joi = require('joi');
 const crypto = require('crypto');
 
-// Validation schema for FluentForms data
+// Flexible validation schema for FluentForms data
 const fluentFormsSchema = Joi.object({
   name: Joi.string().required(),
   phone: Joi.string().required(),
   cityzip: Joi.string().required(),
-  date_time: Joi.string().allow(''),
-  length: Joi.string().allow(''),
-  type: Joi.string().required(),
-  location: Joi.string().allow(''),
-  contactpref: Joi.string().allow(''),
-  email: Joi.string().email().allow('').optional(), // Optional email field
+  date_time: Joi.string().allow('').optional(),
+  length: Joi.string().allow('').optional(),
+  type: Joi.string().allow('').optional(), // Made optional since it can be auto-detected
+  location: Joi.string().allow('').optional(),
+  contactpref: Joi.string().allow('').optional(),
+  email: Joi.string().email().allow('').optional(),
   provider_id: Joi.alternatives().try(
     Joi.number().integer(),
     Joi.string().pattern(/^provider(\d+)$/)
-  ).optional() // For testing specific providers - accepts number or "provider10" format
-});
+  ).optional(),
+  
+  // Beauty service fields (flexible)
+  bodywork: Joi.string().allow('').optional(),
+  cleaning: Joi.string().allow('').optional(),
+  esthetics: Joi.string().allow('').optional(),
+  makeup: Joi.string().allow('').optional(),
+  skincare: Joi.string().allow('').optional(),
+  
+  // Allow any additional fields
+}).unknown(true); // This allows any additional fields not specified
 
 class WebhookController {
   static async handleWordPressUserCreation(req, res) {
@@ -232,6 +241,62 @@ class WebhookController {
       // Debug session length field
       console.log('Session length field value:', formData.length);
       console.log('Session length field type:', typeof formData.length);
+
+      // Auto-detect service type from form data and form structure
+      let detectedServiceType = formData.type || '';
+      
+      // Try to detect service type from form ID or form structure
+      const formId = req.body.form_id || req.body.form?.id || '';
+      console.log('📋 Form ID detected:', formId);
+      
+      // Map form IDs to service types (based on your form list)
+      const formIdMap = {
+        '13': 'Skincare',
+        '12': 'Makeup', 
+        '11': 'Esthetics',
+        '10': 'Cleaning',
+        '9': 'Bodywork',
+        '8': 'Beauty',
+        '7': 'Massage'
+      };
+      
+      if (formId && formIdMap[formId]) {
+        detectedServiceType = formIdMap[formId];
+        console.log(`🎯 Detected service type from form ID ${formId}: ${detectedServiceType}`);
+      }
+      
+      // If no form ID, try to detect from field names or content
+      if (!detectedServiceType) {
+        // Check for specific service-related fields or keywords in form data
+        const allFormText = JSON.stringify(formData).toLowerCase();
+        
+        if (allFormText.includes('skincare')) detectedServiceType = 'Skincare';
+        else if (allFormText.includes('makeup')) detectedServiceType = 'Makeup';
+        else if (allFormText.includes('esthetics')) detectedServiceType = 'Esthetics';
+        else if (allFormText.includes('cleaning')) detectedServiceType = 'Cleaning';
+        else if (allFormText.includes('bodywork')) detectedServiceType = 'Bodywork';
+        else if (allFormText.includes('beauty')) detectedServiceType = 'Beauty';
+        else if (allFormText.includes('massage')) detectedServiceType = 'Massage';
+        
+        if (detectedServiceType) {
+          console.log(`🔍 Detected service type from content: ${detectedServiceType}`);
+        }
+      }
+      
+      // If type is empty but length has service info, swap them
+      if (!detectedServiceType && formData.length && 
+          (formData.length.includes('Hair') || formData.length.includes('Beauty') || 
+           formData.length.includes('Massage') || formData.length.includes('Wellness'))) {
+        detectedServiceType = formData.length;
+        formData.length = formData.type || 'Not specified';
+        console.log(`🔄 Swapped type and length fields: type="${detectedServiceType}", length="${formData.length}"`);
+      }
+      
+      // Set the detected service type
+      formData.type = detectedServiceType || 'General Service';
+      
+      console.log('🎯 Final service type:', formData.type);
+      console.log('📋 Final form data for validation:', JSON.stringify(formData, null, 2));
 
       // Validate the form data
       const { error, value } = fluentFormsSchema.validate(formData);

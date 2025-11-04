@@ -119,6 +119,11 @@ app.get('/fix-database', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'fix-database.html'));
 });
 
+// Phone update page
+app.get('/update-phones', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'update-phones.html'));
+});
+
 // Provider Management UI
 app.get('/admin/providers', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'provider-management.html'));

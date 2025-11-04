@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Provider Phone Numbers - Gold Touch List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            margin-bottom: 20px;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📞 Update Provider Phone Numbers</h1>
+        
+        <div class="info">
+            <h3>ℹ️ Issue Identified</h3>
+            <p>WordPress webhook is only sending: <code>user_id</code>, <code>email</code>, <code>display_name</code></p>
+            <p><strong>Missing:</strong> Phone number field from HivePress registration form</p>
+            <p><strong>Solution:</strong> Manually update phone numbers for existing providers</p>
+        </div>
+        
+        <h2>Single Provider Update</h2>
+        <div class="form-group">
+            <label for="email">Provider Email:</label>
+            <input type="email" id="email" placeholder="user@example.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="phone">Phone Number:</label>
+            <input type="tel" id="phone" placeholder="+15551234567">
+        </div>
+        
+        <button class="btn" onclick="updateSinglePhone()">
+            📞 Update Phone Number
+        </button>
+        
+        <h2>Bulk Update (JSON Format)</h2>
+        <div class="form-group">
+            <label for="bulkUpdates">Bulk Updates (JSON Array):</label>
+            <textarea id="bulkUpdates" rows="8" placeholder='[
+  {"email": "user1@example.com", "phone": "+15551234567"},
+  {"email": "user2@example.com", "phone": "+15559876543"},
+  {"provider_id": "provider8", "phone": "+15555555555"}
+]'></textarea>
+        </div>
+        
+        <button class="btn" onclick="updateBulkPhones()">
+            📋 Bulk Update Phones
+        </button>
+        
+        <button class="btn" onclick="checkCurrentProviders()">
+            👥 Check Current Providers
+        </button>
+        
+        <button class="btn" onclick="window.location.href='/admin'">
+            🏠 Go to Admin Dashboard
+        </button>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        function showResult(message, type = 'success') {
+            const result = document.getElementById('result');
+            result.className = `result ${type}`;
+            result.innerHTML = message;
+            result.style.display = 'block';
+        }
+
+        async function updateSinglePhone() {
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            
+            if (!email || !phone) {
+                showResult('❌ Please enter both email and phone number', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/debug/update-provider-phone', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        phone_number: phone
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`
+                        <h3>✅ Success!</h3>
+                        <p><strong>Provider:</strong> ${data.provider.name || 'Unknown'}</p>
+                        <p><strong>Email:</strong> ${data.provider.email}</p>
+                        <p><strong>Phone:</strong> ${data.provider.phone}</p>
+                        <p><strong>SMS Opted Out:</strong> ${data.provider.sms_opted_out ? 'Yes' : 'No'}</p>
+                    `, 'success');
+                    
+                    // Clear form
+                    document.getElementById('email').value = '';
+                    document.getElementById('phone').value = '';
+                } else {
+                    showResult(`❌ Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateBulkPhones() {
+            const bulkData = document.getElementById('bulkUpdates').value.trim();
+            
+            if (!bulkData) {
+                showResult('❌ Please enter bulk update data', 'error');
+                return;
+            }
+            
+            try {
+                const updates = JSON.parse(bulkData);
+                
+                const response = await fetch('/debug/bulk-update-phones', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        updates: updates
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let message = `<h3>✅ Bulk Update Complete!</h3>`;
+                    message += `<p><strong>Total:</strong> ${data.summary.total}</p>`;
+                    message += `<p><strong>Successful:</strong> ${data.summary.successful}</p>`;
+                    message += `<p><strong>Failed:</strong> ${data.summary.failed}</p>`;
+                    
+                    if (data.results.length > 0) {
+                        message += `<h4>Results:</h4><pre>${JSON.stringify(data.results, null, 2)}</pre>`;
+                    }
+                    
+                    showResult(message, 'success');
+                } else {
+                    showResult(`❌ Failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkCurrentProviders() {
+            try {
+                const response = await fetch('/api/provider/manage');
+                const data = await response.json();
+                
+                if (data.success) {
+                    let message = `<h3>📋 Current Providers (${data.total})</h3>`;
+                    
+                    if (data.providers.length === 0) {
+                        message += '<p>No providers found.</p>';
+                    } else {
+                        message += '<div style="max-height: 300px; overflow-y: auto;">';
+                        data.providers.forEach(p => {
+                            message += `
+                                <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                                    <strong>${p.name || 'Unknown'}</strong> (${p.id})<br>
+                                    📧 ${p.email}<br>
+                                    📱 ${p.phone || 'No phone'}<br>
+                                    ${p.sms_opted_out ? '❌ SMS Opted Out' : '✅ SMS Enabled'}
+                                </div>
+                            `;
+                        });
+                        message += '</div>';
+                    }
+                    
+                    showResult(message, 'info');
+                } else {
+                    showResult(`❌ Failed to load providers: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
