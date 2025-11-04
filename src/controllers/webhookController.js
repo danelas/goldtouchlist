@@ -37,6 +37,9 @@ class WebhookController {
       // Extract user data from WordPress/HivePress
       const userData = req.body;
       
+      console.log('📋 WordPress webhook - all received fields:', Object.keys(userData));
+      console.log('📋 WordPress webhook - full data structure:', JSON.stringify(userData, null, 2));
+      
       // Validate required fields
       if (!userData.user_id || !userData.email) {
         return res.status(400).json({ 
@@ -61,18 +64,52 @@ class WebhookController {
         providerName = `${userData.first_name} ${userData.last_name}`;
       }
       
+      // Extract phone number from various possible field formats
+      let phoneNumber = null;
+      
+      // Try direct phone field first
+      phoneNumber = userData.phone || userData.Phone || userData.PHONE;
+      
+      // If not found, search through all fields for phone-like patterns
+      if (!phoneNumber) {
+        console.log('📞 Searching for phone number in all fields...');
+        
+        for (const [key, value] of Object.entries(userData)) {
+          // Check if field name contains 'phone', 'tel', or 'mobile'
+          if (key.toLowerCase().includes('phone') || 
+              key.toLowerCase().includes('tel') || 
+              key.toLowerCase().includes('mobile') ||
+              key.toLowerCase().includes('number')) {
+            console.log(`📞 Found potential phone field: ${key} = ${value}`);
+            if (value && typeof value === 'string' && value.trim()) {
+              phoneNumber = value.trim();
+              break;
+            }
+          }
+          
+          // Check if value looks like a phone number (contains digits and common phone chars)
+          if (typeof value === 'string' && /[\d\-\(\)\+\s]{10,}/.test(value)) {
+            console.log(`📞 Found phone-like value in field ${key}: ${value}`);
+            phoneNumber = value.trim();
+            break;
+          }
+        }
+      }
+      
+      console.log('📞 Final extracted phone number:', phoneNumber);
+      
       // Create provider record
       const providerData = {
         id: providerId,
         wordpress_user_id: userData.user_id,
         email: userData.email,
-        phone: userData.phone || null,
+        phone: phoneNumber,
         name: providerName,
         slug: userData.user_login || providerId,
         service_areas: userData.service_areas || [],
         is_verified: false, // New users start unverified
         first_lead_used: false,
-        sms_opted_out: !userData.phone // If no phone, opt out of SMS
+        sms_opted_out: !phoneNumber // If no phone, opt out of SMS
       };
 
       const provider = await Provider.create(providerData);

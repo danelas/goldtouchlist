@@ -14,6 +14,7 @@ const providerRoutes = require('./routes/providers');
 const providerUnifiedRoutes = require('./routes/providers-unified');
 const testProviderRoutes = require('./routes/test-provider');
 const manualMigrationRoutes = require('./routes/manual-migration');
+const debugWordPressRoutes = require('./routes/debug-wordpress');
 const analyticsRoutes = require('./routes/analytics');
 const recoveryRoutes = require('./routes/recovery');
 const diagnosticsRoutes = require('./routes/diagnostics');
@@ -86,6 +87,7 @@ app.use('/api/providers', providerRoutes); // API routes for provider management
 app.use('/api/provider', providerUnifiedRoutes); // Unified provider management endpoint
 app.use('/test', testProviderRoutes); // Test provider creation endpoints
 app.use('/migrate', manualMigrationRoutes); // Manual migration endpoints
+app.use('/debug', debugWordPressRoutes); // Debug WordPress webhook endpoints
 app.use('/analytics', analyticsRoutes);
 app.use('/recovery', recoveryRoutes);
 app.use('/diagnostics', diagnosticsRoutes);
