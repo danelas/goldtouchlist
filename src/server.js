@@ -38,8 +38,22 @@ app.use(helmet({
       "script-src": ["'self'", "'unsafe-inline'"], // Allow inline scripts for our HTML pages
     },
   },
+  crossOriginResourcePolicy: { policy: "same-site" },
 }));
-app.use(cors());
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.ADMIN_DASHBOARD_URL || 'http://localhost:3000' 
+    : 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({

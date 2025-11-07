@@ -259,18 +259,36 @@ async function confirmDelete() {
     
     try {
         showLoading(true);
-        const response = await fetch(`/api/providers/admin/${userIdToDelete}`, {
-            method: 'DELETE'
+        console.log('Attempting to delete user with ID:', userIdToDelete);
+        
+        const response = await fetch(`/api/providers/admin/${encodeURIComponent(userIdToDelete)}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include' // Include cookies for authentication if needed
         });
         
+        console.log('Delete response status:', response.status);
+        
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to delete user');
+            let errorMessage = 'Failed to delete user';
+            try {
+                const errorData = await response.json();
+                console.error('Error response:', errorData);
+                errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                console.error('Error parsing error response:', e);
+            }
+            throw new Error(errorMessage);
         }
+        
+        const result = await response.json();
+        console.log('Delete successful:', result);
         
         closeDeleteModal();
         await loadUsers(); // Refresh the user list
-        showNotification('User deleted successfully!', 'success');
+        showNotification(result.message || 'User deleted successfully!', 'success');
     } catch (error) {
         console.error('Error deleting user:', error);
         showError(error.message || 'Failed to delete user. Please try again.');
