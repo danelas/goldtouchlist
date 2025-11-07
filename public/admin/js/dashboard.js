@@ -30,12 +30,16 @@ function setupEventListeners() {
     });
 }
 
+// API base URL
+const API_BASE_URL = 'https://pay.goldtouchlist.com';
+
 // Load users from the API
 async function loadUsers() {
     try {
         showLoading(true);
-        // Replace with your actual API endpoint
-        const response = await fetch('/api/providers/admin/all');
+        const response = await fetch(`${API_BASE_URL}/api/providers/admin/all`, {
+            credentials: 'include' // Include cookies for authentication
+        });
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -261,12 +265,14 @@ async function confirmDelete() {
         showLoading(true);
         console.log('Attempting to delete user with ID:', userIdToDelete);
         
-        const response = await fetch(`/api/providers/admin/${encodeURIComponent(userIdToDelete)}`, {
+        const response = await fetch(`${API_BASE_URL}/api/providers/admin/${encodeURIComponent(userIdToDelete)}`, {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
-            credentials: 'include' // Include cookies for authentication if needed
+            credentials: 'include',
+            mode: 'cors'
         });
         
         console.log('Delete response status:', response.status);

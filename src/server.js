@@ -43,17 +43,57 @@ app.use(helmet({
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.ADMIN_DASHBOARD_URL || 'http://localhost:3000' 
-    : 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://pay.goldtouchlist.com',
+      'http://localhost:3000',
+      'http://localhost:10000',
+      process.env.ADMIN_DASHBOARD_URL
+    ].filter(Boolean);
+
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Allow-Headers',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
+
+// Apply CORS to all routes
 app.use(cors(corsOptions));
 
-// Handle preflight requests
+// Enable pre-flight across-the-board
 app.options('*', cors(corsOptions));
+
+// Log CORS errors
+app.use((err, req, res, next) => {
+  if (err.message === 'Not allowed by CORS') {
+    console.warn('CORS Error:', {
+      origin: req.headers.origin,
+      method: req.method,
+      path: req.path,
+      headers: req.headers
+    });
+  }
+  next(err);
+});
 
 // Rate limiting
 const limiter = rateLimit({
