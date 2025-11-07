@@ -94,8 +94,10 @@ function updateTable() {
     const end = start + itemsPerPage;
     const paginatedUsers = filteredUsers.slice(start, end);
 
-    usersTableBody.innerHTML = paginatedUsers.map(user => `
-        <tr class="hover:bg-gray-50">
+    usersTableBody.innerHTML = paginatedUsers.map(user => {
+        const safeName = escapeHtml(user.name || 'this user');
+        return `
+        <tr class="hover:bg-gray-50" id="user-row-${user.id}">
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">
@@ -123,13 +125,13 @@ function updateTable() {
                 <button onclick="editUser('${user.id}')" class="text-blue-600 hover:text-blue-900 mr-4">
                     <i class="fas fa-edit"></i> Edit
                 </button>
-                <button onclick="confirmDeleteUser('${user.id}', '${escapeHtml(user.name || 'this user')}')" 
+                <button onclick="confirmDeleteUser('${user.id}', '${safeName.replace(/'/g, "\\'")}')" 
                         class="text-red-600 hover:text-red-900">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 // Update pagination controls
@@ -246,9 +248,30 @@ async function saveUser(event) {
 
 // Confirm delete user
 function confirmDeleteUser(userId, userName) {
-    userIdToDelete = userId;
-    document.getElementById('userToDelete').textContent = userName;
-    document.getElementById('deleteModal').classList.remove('hidden');
+    try {
+        console.log('Delete button clicked for user:', { userId, userName });
+        userIdToDelete = userId;
+        
+        // Ensure the modal elements exist
+        const userNameElement = document.getElementById('userToDelete');
+        const deleteModal = document.getElementById('deleteModal');
+        
+        if (!userNameElement || !deleteModal) {
+            console.error('Delete modal elements not found');
+            showError('Error: Could not find delete confirmation dialog');
+            return;
+        }
+        
+        // Update the modal content
+        userNameElement.textContent = userName || 'this user';
+        
+        // Show the modal
+        deleteModal.classList.remove('hidden');
+        console.log('Delete confirmation modal shown');
+    } catch (error) {
+        console.error('Error in confirmDeleteUser:', error);
+        showError('Error preparing delete confirmation');
+    }
 }
 
 // Close delete confirmation modal
