@@ -158,6 +158,11 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin-dashboard.html'));
 });
 
+// Admin Users page
+app.get('/admin/users', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'admin', 'users.html'));
+});
+
 // Quick setup page to add Dan
 app.get('/setup', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'add-dan.html'));
