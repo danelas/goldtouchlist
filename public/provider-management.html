@@ -691,7 +691,7 @@
                     <td>
                         <div class="actions">
                             <button class="btn btn-sm btn-primary" onclick="editProvider('${provider.id}')">✏️ Edit</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteProvider('${provider.id}', '${provider.name}')">🗑️ Delete</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteProvider('${provider.id}')">🗑️ Delete</button>
                         </div>
                     </td>
                 </tr>
@@ -818,8 +818,9 @@
             }
         }
 
-        function deleteProvider(providerId, providerName) {
-            document.getElementById('deleteProviderName').textContent = providerName;
+        function deleteProvider(providerId) {
+            const p = providers.find(pr => pr.id === providerId);
+            document.getElementById('deleteProviderName').textContent = (p && p.name) ? p.name : providerId;
             document.getElementById('confirmDeleteButton').onclick = () => confirmDelete(providerId);
             document.getElementById('deleteModal').style.display = 'block';
         }
