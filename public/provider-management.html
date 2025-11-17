@@ -430,10 +430,10 @@
                 <input type="text" id="searchInput" placeholder="Search providers by name, email, phone, or ID...">
                 <span class="search-icon">🔍</span>
             </div>
-            <button class="btn btn-primary" onclick="openCreateModal()">
+            <button class="btn btn-primary" id="btnAddProvider">
                 ➕ Add New Provider
             </button>
-            <button class="btn btn-secondary" onclick="refreshData()">
+            <button class="btn btn-secondary" id="btnRefresh">
                 🔄 Refresh
             </button>
         </div>
@@ -544,7 +544,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary" id="btnCancelProvider">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="saveButton">Save Provider</button>
                 </div>
             </form>
@@ -565,7 +565,7 @@
             </p>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary" id="btnCancelDelete">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteButton">Delete Provider</button>
             </div>
         </div>
@@ -605,6 +605,32 @@
                     closeDeleteModal();
                 }
             });
+
+            // Button click handlers (avoid inline handlers per CSP)
+            const addBtn = document.getElementById('btnAddProvider');
+            if (addBtn) addBtn.addEventListener('click', openCreateModal);
+            const refreshBtn = document.getElementById('btnRefresh');
+            if (refreshBtn) refreshBtn.addEventListener('click', refreshData);
+            const cancelProviderBtn = document.getElementById('btnCancelProvider');
+            if (cancelProviderBtn) cancelProviderBtn.addEventListener('click', closeModal);
+            const cancelDeleteBtn = document.getElementById('btnCancelDelete');
+            if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+
+            // Delegated actions for Edit/Delete in table (no inline onclick)
+            const tbody = document.getElementById('providersTableBody');
+            if (tbody) {
+                tbody.addEventListener('click', function(e) {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+                    if (btn.classList.contains('action-edit')) {
+                        const id = btn.getAttribute('data-id');
+                        if (id) editProvider(id);
+                    } else if (btn.classList.contains('action-delete')) {
+                        const id = btn.getAttribute('data-id');
+                        if (id) deleteProvider(id);
+                    }
+                });
+            }
         }
 
         async function loadProviders() {
@@ -690,8 +716,8 @@
                     <td>${new Date(provider.created_at).toLocaleDateString()}</td>
                     <td>
                         <div class="actions">
-                            <button class="btn btn-sm btn-primary" onclick="editProvider('${provider.id}')">✏️ Edit</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteProvider('${provider.id}')">🗑️ Delete</button>
+                            <button class="btn btn-sm btn-primary action-edit" data-id="${provider.id}">✏️ Edit</button>
+                            <button class="btn btn-sm btn-danger action-delete" data-id="${provider.id}" onclick="deleteProvider('${provider.id}')">🗑️ Delete</button>
                         </div>
                     </td>
                 </tr>
