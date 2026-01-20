@@ -6,6 +6,8 @@ if (!global.crypto) {
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Unlock = require('../models/Unlock');
+const Lead = require('../models/Lead');
+const PricingService = require('./PricingService');
 
 class StripeService {
   static async createPaymentLink(leadId, providerId, providerEmail = null) {
@@ -25,6 +27,18 @@ class StripeService {
         return existingUnlock.payment_link_url;
       }
 
+      // Determine price from unlock or from service type
+      let priceCents = PricingService.getDefaultPriceCents();
+      const existingForPrice = await Unlock.findByLeadAndProvider(leadId, providerId);
+      if (existingForPrice && existingForPrice.price_cents) {
+        priceCents = existingForPrice.price_cents;
+      } else {
+        const lead = await Lead.getPublicFields(leadId);
+        if (lead && lead.service_type) {
+          priceCents = PricingService.getPriceCentsForServiceType(lead.service_type);
+        }
+      }
+
       const sessionParams = {
         mode: 'payment',
         line_items: [
@@ -35,7 +49,7 @@ class StripeService {
                 name: 'Lead Contact Details Access',
                 description: 'Unlock full client contact information for this lead',
               },
-              unit_amount: 2000, // $20.00 in cents
+              unit_amount: priceCents,
             },
             quantity: 1,
           },
@@ -95,6 +109,18 @@ class StripeService {
       }
 
       // Create a Payment Link (alternative to Checkout Session)
+      // Determine price for direct payment link
+      let priceCents = PricingService.getDefaultPriceCents();
+      const unlockForPrice = await Unlock.findByLeadAndProvider(leadId, providerId);
+      if (unlockForPrice && unlockForPrice.price_cents) {
+        priceCents = unlockForPrice.price_cents;
+      } else {
+        const lead = await Lead.getPublicFields(leadId);
+        if (lead && lead.service_type) {
+          priceCents = PricingService.getPriceCentsForServiceType(lead.service_type);
+        }
+      }
+
       const paymentLink = await stripe.paymentLinks.create({
         line_items: [
           {
@@ -104,7 +130,7 @@ class StripeService {
                 name: 'Lead Contact Details Access',
                 description: 'Unlock full client contact information for this lead',
               },
-              unit_amount: 2000, // $20.00 in cents
+              unit_amount: priceCents,
             },
             quantity: 1,
           },
@@ -164,7 +190,7 @@ class StripeService {
   }
 
   static getPrice() {
-    return 2000; // $20.00 in cents
+    return PricingService.getDefaultPriceCents();
   }
 }
 
