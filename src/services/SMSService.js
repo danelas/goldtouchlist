@@ -1,5 +1,6 @@
 const axios = require('axios');
 const moment = require('moment-timezone');
+const PricingService = require('./PricingService');
 
 class SMSService {
   constructor() {
@@ -36,8 +37,20 @@ class SMSService {
     }
   }
 
-  async sendTeaserMessage(providerPhone, leadData, leadId) {
-    const message = this.formatTeaserMessage(leadData, leadId);
+  async sendTeaserMessage(providerPhone, leadData, leadId, providerId) {
+    // Determine price from unlock if available
+    let priceCents = PricingService.getDefaultPriceCents();
+    try {
+      const Unlock = require('../models/Unlock');
+      const unlock = await Unlock.findByLeadAndProvider(leadId, providerId);
+      if (unlock && unlock.price_cents) {
+        priceCents = unlock.price_cents;
+      }
+    } catch (err) {
+      console.error('Error determining price for teaser SMS, falling back to default:', err);
+    }
+
+    const message = this.formatTeaserMessage(leadData, leadId, priceCents);
     
     // Check quiet hours before sending
     if (this.isQuietHours(providerPhone)) {
@@ -49,11 +62,13 @@ class SMSService {
     return await this.sendSMS(providerPhone, message);
   }
 
-  async sendPaymentLink(providerPhone, paymentUrl, leadId) {
+  async sendPaymentLink(providerPhone, paymentUrl, leadId, priceCentsOverride = null) {
     // Create a shorter redirect URL
     const shortUrl = `${process.env.DOMAIN}/unlocks/pay/${leadId.substring(0, 8)}`;
-    
-    const message = `🔓 Pay $20 to unlock lead: ${shortUrl}`;
+
+    const priceCents = priceCentsOverride ?? PricingService.getDefaultPriceCents();
+    const priceText = PricingService.formatPriceFromCents(priceCents);
+    const message = `🔓 Pay ${priceText} to unlock lead: ${shortUrl}`;
     
     console.log('Payment SMS length:', message.length);
     console.log('Original Stripe URL length:', paymentUrl.length);
@@ -72,7 +87,7 @@ class SMSService {
     return await this.sendSMS(providerPhone, message);
   }
 
-  formatTeaserMessage(leadData, leadId) {
+  formatTeaserMessage(leadData, leadId, priceCents) {
     // Debug: Log the leadData being passed to SMS formatter
     console.log('SMS Formatter - leadData received:', JSON.stringify(leadData, null, 2));
     console.log('City value:', leadData.city);
@@ -117,13 +132,15 @@ class SMSService {
       }
     }
 
+    const priceText = PricingService.formatPriceFromCents(priceCents);
+
     return `📋 GOLD TOUCH LIST CLIENT REQUEST AVAILABLE
 Service: ${leadData.service_type}
 Location: ${leadData.city}
 When: ${timeWindow}
 Session: ${leadData.session_length || leadData.length || 'Not specified'}
 ${contactInfo ? contactInfo + '\n' : ''}
-💰 Unlock full contact details for $20
+💰 Unlock full contact details for ${priceText}
 Reply Y to proceed, N to pass
 
 Gold Touch List provides advertising access to client inquiries. We do not arrange or guarantee appointments.`;
@@ -338,7 +355,8 @@ Thanks for using Gold Touch List!`;
             return { action: 'payment_error' };
           }
           
-          await this.sendPaymentLink(phoneNumber, paymentUrl, leadId);
+          const priceCents = unlock.price_cents || PricingService.getDefaultPriceCents();
+          await this.sendPaymentLink(phoneNumber, paymentUrl, leadId, priceCents);
           
           await Unlock.updateStatus(leadId, providerId, 'PAYMENT_LINK_SENT', {
             payment_link_sent_at: now,
@@ -376,7 +394,8 @@ Thanks for using Gold Touch List!`;
   }
 
   async sendHelpMessage(phoneNumber) {
-    const message = "Reply Y to unlock for $20. Reply N to skip. Reply STOP to opt out.";
+    const priceText = PricingService.formatPriceFromCents(PricingService.getDefaultPriceCents());
+    const message = `Reply Y to unlock for ${priceText}. Reply N to skip. Reply STOP to opt out.`;
     return await this.sendSMS(phoneNumber, message);
   }
 
