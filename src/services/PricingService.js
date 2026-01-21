@@ -3,7 +3,7 @@ class PricingService {
     skincare: 1800,
     makeup: 1200,
     esthetics: 1200,
-    cleaning: 1000,
+    cleaning: 1300,
     bodywork: 1500,
     beauty: 1200,
     massage: 1500,

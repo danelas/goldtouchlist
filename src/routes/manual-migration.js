@@ -18,6 +18,10 @@ router.post('/run-migrations', async (req, res) => {
     const addUnlockAuditColumns = require('../migrations/add_unlock_audit_columns');
     await addUnlockAuditColumns();
     
+    // Run the unlock price column migration
+    const addUnlockPriceColumn = require('../migrations/add_unlock_price_column');
+    await addUnlockPriceColumn();
+    
     console.log('✅ Manual migration completed successfully');
     
     res.json({
