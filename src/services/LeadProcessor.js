@@ -4,6 +4,7 @@ const Provider = require('../models/Provider');
 const OpenAIService = require('./OpenAIService');
 const SMSService = require('./SMSService');
 const StripeService = require('./StripeService');
+const PricingService = require('./PricingService');
 
 class LeadProcessor {
   static async processNewLead(leadId, specificProviderId = null) {
@@ -125,9 +126,13 @@ class LeadProcessor {
         return;
       }
 
-      // Create unlock record
-      console.log(`Creating unlock record for lead ${leadId} and provider ${providerId}`);
-      const unlock = await Unlock.create(leadId, providerId);
+      // Determine price based on service type
+      const serviceType = (leadData.service_type || leadData.type || '').toString();
+      const priceCents = PricingService.getPriceCentsForServiceType(serviceType);
+
+      // Create unlock record with price
+      console.log(`Creating unlock record for lead ${leadId} and provider ${providerId} at ${PricingService.formatPriceFromCents(priceCents)}`);
+      const unlock = await Unlock.create(leadId, providerId, 24, priceCents);
       console.log('Unlock record created:', unlock);
 
       // Check quiet hours
@@ -180,7 +185,7 @@ class LeadProcessor {
 
       // Normal flow - send teaser SMS
       console.log(`Sending regular teaser to provider ${providerId}`);
-      await SMSService.sendTeaserMessage(provider.phone, leadData, leadId);
+      await SMSService.sendTeaserMessage(provider.phone, leadData, leadId, providerId);
 
       // Update unlock status with audit trail
       await Unlock.updateStatus(leadId, providerId, 'TEASER_SENT', {

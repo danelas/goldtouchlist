@@ -2,14 +2,14 @@ const pool = require('../config/database');
 const moment = require('moment-timezone');
 
 class Unlock {
-  static async create(leadId, providerId, ttlHours = 24) {
+  static async create(leadId, providerId, ttlHours = 24, priceCents = null) {
     const idempotencyKey = `unlock_${leadId}_${providerId}`;
     const ttlExpiresAt = moment().add(ttlHours, 'hours').toISOString();
 
     const query = `
       INSERT INTO unlocks (
-        lead_id, provider_id, status, idempotency_key, ttl_expires_at
-      ) VALUES ($1, $2, $3, $4, $5)
+        lead_id, provider_id, status, idempotency_key, ttl_expires_at, price_cents
+      ) VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (lead_id, provider_id) 
       DO UPDATE SET 
         status = EXCLUDED.status,
@@ -18,7 +18,7 @@ class Unlock {
       RETURNING *
     `;
 
-    const values = [leadId, providerId, 'NEW_LEAD', idempotencyKey, ttlExpiresAt];
+    const values = [leadId, providerId, 'NEW_LEAD', idempotencyKey, ttlExpiresAt, priceCents];
 
     try {
       const result = await pool.query(query, values);
