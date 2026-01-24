@@ -7,6 +7,7 @@ class PricingService {
     bodywork: 1500,
     beauty: 1200,
     massage: 1500,
+    wellness: 1800,
   };
 
   static getPriceCentsForServiceType(serviceType) {
