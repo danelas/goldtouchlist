@@ -251,6 +251,7 @@ class WebhookController {
       
       // Map form IDs to service types (based on your form list)
       const formIdMap = {
+        '17': 'Wellness',
         '13': 'Skincare',
         '12': 'Makeup', 
         '11': 'Esthetics',
