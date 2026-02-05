@@ -395,10 +395,14 @@ class WebhookController {
     }
 
     try {
-      console.log('Webhook event type:', event.type);
+      console.log('🔔 Webhook event type:', event.type);
+      console.log('🔔 Webhook event ID:', event.id);
+      console.log('🔔 Webhook received at:', new Date().toISOString());
       
       if (event.type === 'checkout.session.completed') {
+        console.log('💳 Processing checkout.session.completed webhook...');
         await WebhookController.handleCheckoutCompleted(event.data.object);
+        console.log('✅ Webhook processing completed successfully');
       } else {
         console.log(`ℹ️ Ignoring webhook event type: ${event.type}`);
       }

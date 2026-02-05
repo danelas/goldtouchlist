@@ -54,10 +54,23 @@ class Unlock {
     query += ` WHERE lead_id = $${paramCount + 1} AND provider_id = $${paramCount + 2} RETURNING *`;
 
     try {
+      console.log(`[Unlock.updateStatus] Updating ${leadId}/${providerId} to ${status}`);
+      console.log(`[Unlock.updateStatus] Audit data:`, JSON.stringify(auditData));
+      
       const result = await pool.query(query, values);
-      return result.rows[0];
+      
+      if (result.rows.length === 0) {
+        console.error(`[Unlock.updateStatus] ❌ No rows updated for ${leadId}/${providerId}`);
+        return null;
+      }
+      
+      const updated = result.rows[0];
+      console.log(`[Unlock.updateStatus] ✅ Updated successfully. New status: ${updated.status}, checkout_session_id: ${updated.checkout_session_id}`);
+      return updated;
     } catch (error) {
-      console.error('Error updating unlock status:', error);
+      console.error('[Unlock.updateStatus] ❌ Error updating unlock status:', error);
+      console.error('[Unlock.updateStatus] Query was:', query);
+      console.error('[Unlock.updateStatus] Values were:', values);
       throw error;
     }
   }

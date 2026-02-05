@@ -5,9 +5,65 @@ const EmailService = require('../services/EmailService');
 const StripeService = require('../services/StripeService');
 const Provider = require('../models/Provider');
 
-// Success page after payment
-router.get('/success', (req, res) => {
+// Success page after payment - includes fallback verification
+router.get('/success', async (req, res) => {
   const { lead_id, provider_id } = req.query;
+  
+  // Fallback: verify payment and trigger reveal if webhook missed
+  if (lead_id && provider_id) {
+    try {
+      const unlock = await Unlock.findByLeadAndProvider(lead_id, provider_id);
+      
+      if (unlock && unlock.checkout_session_id && unlock.status !== 'REVEALED' && unlock.status !== 'PAID') {
+        console.log(`[Success Page Fallback] Checking payment for unlock ${lead_id}/${provider_id}`);
+        console.log(`[Success Page Fallback] Current status: ${unlock.status}, session: ${unlock.checkout_session_id}`);
+        
+        const isPaid = await StripeService.verifyPayment(unlock.checkout_session_id);
+        
+        if (isPaid) {
+          console.log(`[Success Page Fallback] ⚠️ Payment verified but webhook missed! Triggering reveal...`);
+          
+          const Lead = require('../models/Lead');
+          const SMSService = require('../services/SMSService');
+          const now = new Date().toISOString();
+          
+          // Update to PAID
+          await Unlock.updateStatus(lead_id, provider_id, 'PAID', {
+            paid_at: now,
+            unlocked_at: now
+          });
+          
+          // Get details and send reveal
+          const leadDetails = await Lead.getPrivateFields(lead_id);
+          const publicDetails = await Lead.getPublicFields(lead_id);
+          const provider = await Provider.findById(provider_id);
+          
+          if (leadDetails && provider) {
+            await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, lead_id);
+            
+            try {
+              await EmailService.sendUnlockedDetailsEmail({
+                provider,
+                privateDetails: leadDetails,
+                publicDetails
+              });
+            } catch (emailErr) {
+              console.error('[Success Page Fallback] Email failed (SMS sent):', emailErr.message);
+            }
+            
+            await Unlock.updateStatus(lead_id, provider_id, 'REVEALED', {
+              revealed_at: now
+            });
+            
+            console.log(`[Success Page Fallback] ✅ Successfully revealed via fallback!`);
+          }
+        }
+      }
+    } catch (fallbackError) {
+      console.error('[Success Page Fallback] Error in fallback verification:', fallbackError);
+      // Don't fail the page load, just log the error
+    }
+  }
   
   res.send(`
     <!DOCTYPE html>

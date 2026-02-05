@@ -241,4 +241,94 @@ router.post('/fix-payment', async (req, res) => {
   }
 });
 
+// Scan for missed payments and fix them automatically
+router.get('/scan-missed-payments', async (req, res) => {
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const Lead = require('../models/Lead');
+    const Provider = require('../models/Provider');
+    const SMSService = require('../services/SMSService');
+    const Unlock = require('../models/Unlock');
+    
+    console.log('[Scan Missed Payments] Starting scan...');
+    
+    // Find unlocks with checkout_session_id but not yet PAID or REVEALED
+    const query = `
+      SELECT * FROM unlocks 
+      WHERE checkout_session_id IS NOT NULL 
+      AND status NOT IN ('PAID', 'REVEALED', 'EXPIRED')
+      AND created_at > NOW() - INTERVAL '48 hours'
+    `;
+    
+    const result = await pool.query(query);
+    const pendingUnlocks = result.rows;
+    
+    console.log(`[Scan Missed Payments] Found ${pendingUnlocks.length} pending unlocks to check`);
+    
+    const fixed = [];
+    const errors = [];
+    
+    for (const unlock of pendingUnlocks) {
+      try {
+        // Check if payment was actually completed in Stripe
+        const session = await stripe.checkout.sessions.retrieve(unlock.checkout_session_id);
+        
+        if (session.payment_status === 'paid') {
+          console.log(`[Scan Missed Payments] ⚠️ Found paid but unrevealed: ${unlock.lead_id}`);
+          
+          const now = new Date().toISOString();
+          
+          // Update to PAID
+          await Unlock.updateStatus(unlock.lead_id, unlock.provider_id, 'PAID', {
+            paid_at: now,
+            unlocked_at: now
+          });
+          
+          // Send reveal
+          const leadDetails = await Lead.getPrivateFields(unlock.lead_id);
+          const publicDetails = await Lead.getPublicFields(unlock.lead_id);
+          const provider = await Provider.findById(unlock.provider_id);
+          
+          if (leadDetails && provider) {
+            await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, unlock.lead_id);
+            
+            await Unlock.updateStatus(unlock.lead_id, unlock.provider_id, 'REVEALED', {
+              revealed_at: now
+            });
+            
+            fixed.push({
+              lead_id: unlock.lead_id,
+              provider_id: unlock.provider_id,
+              client_name: leadDetails.client_name
+            });
+            
+            console.log(`[Scan Missed Payments] ✅ Fixed: ${unlock.lead_id}`);
+          }
+        }
+      } catch (err) {
+        console.error(`[Scan Missed Payments] Error checking ${unlock.lead_id}:`, err.message);
+        errors.push({
+          lead_id: unlock.lead_id,
+          error: err.message
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      scanned: pendingUnlocks.length,
+      fixed: fixed.length,
+      fixed_details: fixed,
+      errors: errors
+    });
+    
+  } catch (error) {
+    console.error('[Scan Missed Payments] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

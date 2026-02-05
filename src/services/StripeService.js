@@ -75,11 +75,30 @@ class StripeService {
       });
 
       // Update the unlock with payment link
-      await Unlock.updateStatus(leadId, providerId, 'PAYMENT_LINK_SENT', {
+      const updated = await Unlock.updateStatus(leadId, providerId, 'PAYMENT_LINK_SENT', {
         payment_link_url: session.url,
         checkout_session_id: session.id,
         last_sent_at: new Date().toISOString()
       });
+
+      // Verify the update worked - critical for webhook processing
+      if (!updated || updated.checkout_session_id !== session.id) {
+        console.error(`⚠️ CRITICAL: checkout_session_id may not have been saved!`);
+        console.error(`Expected: ${session.id}, Got: ${updated?.checkout_session_id}`);
+        
+        // Retry the update once
+        const retryUpdate = await Unlock.updateStatus(leadId, providerId, 'PAYMENT_LINK_SENT', {
+          payment_link_url: session.url,
+          checkout_session_id: session.id,
+          payment_link_sent_at: new Date().toISOString()
+        });
+        
+        if (!retryUpdate || retryUpdate.checkout_session_id !== session.id) {
+          console.error(`⚠️ CRITICAL: Retry also failed! checkout_session_id not saved.`);
+        } else {
+          console.log(`✅ Retry successful - checkout_session_id saved on second attempt`);
+        }
+      }
 
       return session.url;
 
