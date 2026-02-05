@@ -5,6 +5,7 @@ const OpenAIService = require('./OpenAIService');
 const SMSService = require('./SMSService');
 const StripeService = require('./StripeService');
 const PricingService = require('./PricingService');
+const EmailService = require('./EmailService');
 
 class LeadProcessor {
   static async processNewLead(leadId, specificProviderId = null) {
@@ -185,6 +186,18 @@ class LeadProcessor {
 
       // Normal flow - send teaser SMS
       console.log(`Sending regular teaser to provider ${providerId}`);
+
+      try {
+        await EmailService.sendAcceptUnlockEmail({
+          provider,
+          leadData,
+          leadId,
+          priceCents
+        });
+      } catch (emailError) {
+        console.error('Error sending accept/unlock email (continuing with SMS):', emailError);
+      }
+
       await SMSService.sendTeaserMessage(provider.phone, leadData, leadId, providerId);
 
       // Update unlock status with audit trail

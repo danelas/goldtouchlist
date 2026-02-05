@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const Unlock = require('../models/Unlock');
+const EmailService = require('../services/EmailService');
+const StripeService = require('../services/StripeService');
+const Provider = require('../models/Provider');
 
 // Success page after payment
 router.get('/success', (req, res) => {
@@ -69,6 +72,41 @@ router.get('/success', (req, res) => {
     </body>
     </html>
   `);
+});
+
+router.get('/accept', async (req, res) => {
+  try {
+    const token = req.query.token;
+    const payload = EmailService.verifyAcceptToken(token);
+
+    if (!payload) {
+      return res.status(400).send('Invalid or expired link');
+    }
+
+    const leadId = payload.leadId;
+    const providerId = payload.providerId;
+
+    const provider = await Provider.findById(providerId);
+    if (!provider) {
+      return res.status(404).send('Provider not found');
+    }
+
+    const unlock = await Unlock.findByLeadAndProvider(leadId, providerId);
+    if (!unlock) {
+      return res.status(404).send('Unlock not found');
+    }
+
+    const isLeadClosed = await Unlock.isLeadClosed(leadId);
+    if (isLeadClosed) {
+      return res.status(410).send('This lead is no longer available.');
+    }
+
+    const paymentUrl = await StripeService.createPaymentLink(leadId, providerId, provider.email);
+    return res.redirect(paymentUrl);
+  } catch (error) {
+    console.error('Error handling email accept link:', error);
+    return res.status(500).send('Internal server error');
+  }
 });
 
 // Cancel page

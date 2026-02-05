@@ -301,6 +301,9 @@ app.listen(PORT, () => {
         
         const addUnlockAuditColumns = require('./migrations/add_unlock_audit_columns');
         await addUnlockAuditColumns();
+
+        const addUnlockPriceColumn = require('./migrations/add_unlock_price_column');
+        await addUnlockPriceColumn();
       } catch (migrationError) {
         console.error('Migration error:', migrationError);
       }

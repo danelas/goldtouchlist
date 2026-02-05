@@ -414,6 +414,7 @@ class WebhookController {
   static async handleCheckoutCompleted(session) {
     const Unlock = require('../models/Unlock');
     const SMSService = require('../services/SMSService');
+    const EmailService = require('../services/EmailService');
     const Lead = require('../models/Lead');
     const Provider = require('../models/Provider');
 
@@ -544,6 +545,16 @@ class WebhookController {
       if (leadDetails && provider) {
         // Send reveal SMS
         await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, leadId);
+
+        try {
+          await EmailService.sendUnlockedDetailsEmail({
+            provider,
+            privateDetails: leadDetails,
+            publicDetails
+          });
+        } catch (emailError) {
+          console.error('Error sending unlocked details email (SMS already sent):', emailError);
+        }
 
         // Update status to REVEALED with audit trail
         await Unlock.updateStatus(leadId, providerId, 'REVEALED', {
