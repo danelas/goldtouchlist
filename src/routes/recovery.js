@@ -184,10 +184,12 @@ router.post('/fix-payment', async (req, res) => {
     
     const unlock = unlockResult.rows[0];
     
-    if (unlock.status !== 'PAYMENT_LINK_SENT') {
+    // Allow fix for TEASER_SENT or PAYMENT_LINK_SENT (payment link may have been sent but status not updated)
+    const allowedStatuses = ['TEASER_SENT', 'PAYMENT_LINK_SENT'];
+    if (!allowedStatuses.includes(unlock.status)) {
       return res.json({
         success: false,
-        error: `Cannot fix - current status is ${unlock.status}, expected PAYMENT_LINK_SENT`
+        error: `Cannot fix - current status is ${unlock.status}, expected one of: ${allowedStatuses.join(', ')}`
       });
     }
     
