@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Dan - Gold Touch List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Quick Setup - Add Dan</h1>
+        
+        <button class="btn" onclick="addDan()">
+            ➕ Add Dan (+19546144683)
+        </button>
+        
+        <button class="btn" onclick="addTestProviders()">
+            👥 Add Multiple Test Providers
+        </button>
+        
+        <button class="btn" onclick="checkProviders()">
+            📋 Check Current Providers
+        </button>
+        
+        <button class="btn" onclick="testRouting()">
+            🔧 Test Routing
+        </button>
+        
+        <button class="btn" onclick="goToDashboard()">
+            🏠 Go to Admin Dashboard
+        </button>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        function showResult(message, isSuccess = true) {
+            const result = document.getElementById('result');
+            result.className = `result ${isSuccess ? 'success' : 'error'}`;
+            result.innerHTML = message;
+            result.style.display = 'block';
+        }
+
+        function showLoading() {
+            const result = document.getElementById('result');
+            result.className = 'result loading';
+            result.innerHTML = '⏳ Processing...';
+            result.style.display = 'block';
+        }
+
+        async function addDan() {
+            console.log('🔧 Adding Dan - button clicked');
+            showLoading();
+            try {
+                console.log('📡 Making POST request to /test/add-dan');
+                const response = await fetch('/test/add-dan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('📥 Response status:', response.status);
+                console.log('📥 Response ok:', response.ok);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('📦 Response data:', data);
+                
+                if (data.success) {
+                    showResult(`✅ Success! Dan added as ${data.provider.id}<br>
+                               📧 Email: ${data.provider.email}<br>
+                               📱 Phone: ${data.provider.phone}<br>
+                               🏷️ ID: ${data.provider.id}`);
+                } else {
+                    showResult(`❌ Failed: ${data.error}<br>Details: ${data.details || 'No details'}`, false);
+                }
+            } catch (error) {
+                console.error('❌ Error adding Dan:', error);
+                showResult(`❌ Error: ${error.message}<br>Check browser console for details`, false);
+            }
+        }
+
+        async function addTestProviders() {
+            showLoading();
+            try {
+                const response = await fetch('/test/add-test-providers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let message = `✅ Success! Added ${data.providers.length} providers:<br><br>`;
+                    data.providers.forEach(p => {
+                        message += `👤 ${p.name} (${p.id}) - ${p.phone}<br>`;
+                    });
+                    showResult(message);
+                } else {
+                    showResult(`❌ Failed: ${data.error}`, false);
+                }
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, false);
+            }
+        }
+
+        async function checkProviders() {
+            showLoading();
+            try {
+                const response = await fetch('/api/provider/manage');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.providers.length === 0) {
+                        showResult('📭 No providers found. Click "Add Dan" to get started!');
+                    } else {
+                        let message = `📋 Found ${data.total} providers:<br><br>`;
+                        data.providers.forEach(p => {
+                            message += `👤 ${p.name} (${p.id})<br>
+                                       📧 ${p.email}<br>
+                                       📱 ${p.phone || 'No phone'}<br>
+                                       ${p.is_verified ? '✅ Verified' : '⚠️ Unverified'}<br><br>`;
+                        });
+                        showResult(message);
+                    }
+                } else {
+                    showResult(`❌ Failed: ${data.error}`, false);
+                }
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, false);
+            }
+        }
+
+        async function testRouting() {
+            console.log('🔧 Testing routing...');
+            showLoading();
+            try {
+                const response = await fetch('/test/hello');
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`✅ Routing works! Message: ${data.message}<br>Time: ${data.timestamp}`);
+                } else {
+                    showResult(`❌ Routing test failed: ${data.error}`, false);
+                }
+            } catch (error) {
+                console.error('❌ Routing test error:', error);
+                showResult(`❌ Routing Error: ${error.message}`, false);
+            }
+        }
+
+        function goToDashboard() {
+            window.location.href = '/admin';
+        }
+
+        // Auto-check providers on page load (commented out to avoid interference)
+        // window.addEventListener('DOMContentLoaded', checkProviders);
+        
+        // Show initial message
+        window.addEventListener('DOMContentLoaded', function() {
+            showResult('🚀 Ready! Click "Add Dan" to get started or "Check Current Providers" to see existing data.');
+        });
+    </script>
+</body>
+</html>
