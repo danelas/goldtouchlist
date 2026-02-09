@@ -91,25 +91,31 @@ class EmailService {
     return { messageId: info.messageId, accepted: info.accepted, rejected: info.rejected };
   }
 
-  static buildAcceptEmailHtml({ providerName, leadSummaryText, acceptUrl, priceText }) {
+  static buildAcceptEmailHtml({ providerName, leadSummaryText, acceptUrl }) {
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Unlock Lead</title>
+  <title>New Customer Request</title>
 </head>
 <body style="font-family: Arial, sans-serif; background:#f6f7f9; padding:24px;">
   <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; padding:24px;">
-    <h2 style="margin:0 0 12px 0;">New Lead Available</h2>
+    <h2 style="margin:0 0 12px 0;">New Customer Request</h2>
     <p style="margin:0 0 16px 0; color:#333;">Hi${providerName ? ` ${providerName}` : ''},</p>
-    <p style="margin:0 0 16px 0; color:#333;">You have a new client request available. Unlock full contact details for <strong>${priceText}</strong>.</p>
+    <p style="margin:0 0 16px 0; color:#333;">You have a new customer request.</p>
+    <p style="margin:0 0 8px 0; color:#333;">Here's a preview of the request:</p>
     <pre style="white-space:pre-wrap; background:#f3f4f6; border-radius:10px; padding:14px; color:#111;">${leadSummaryText}</pre>
+    <p style="margin:16px 0 0 0; color:#333;">This customer is currently looking to book.</p>
+    <p style="margin:8px 0 0 0; color:#333;">If you choose to access this request, the full contact details will be sent to you immediately by email.</p>
     <div style="margin:18px 0 10px 0; text-align:center;">
-      <a href="${acceptUrl}" style="display:inline-block; padding:14px 18px; background:#111827; color:#fff; border-radius:10px; text-decoration:none; font-weight:700;">Accept &amp; Unlock Full Details</a>
+      <a href="${acceptUrl}" style="display:inline-block; padding:14px 18px; background:#111827; color:#fff; border-radius:10px; text-decoration:none; font-weight:700;">Access Full Details</a>
     </div>
-    <p style="margin:10px 0 0 0; color:#6b7280; font-size:13px;">If the button doesn’t work, copy and paste this link into your browser:</p>
+    <p style="margin:10px 0 0 0; color:#6b7280; font-size:13px;">If the button doesn't work, copy and paste this link into your browser:</p>
     <p style="margin:6px 0 0 0; font-size:13px; word-break:break-all;"><a href="${acceptUrl}">${acceptUrl}</a></p>
+    <p style="margin:16px 0 0 0; color:#333;">We recommend responding quickly to increase your chances of securing the booking.</p>
+    <p style="margin:8px 0 0 0; color:#333;">If you need help, just reply to this email.</p>
+    <p style="margin:16px 0 0 0; color:#333;">Best,<br/>Gold Touch List Team</p>
   </div>
 </body>
 </html>`;
@@ -128,15 +134,14 @@ class EmailService {
     const priceText = PricingService.formatPriceFromCents(priceCents);
     const leadSummaryText = `Service: ${leadData.service_type}\nLocation: ${leadData.city}\nWhen: ${leadData.preferred_time_window || 'Flexible'}\nSession: ${leadData.session_length || leadData.length || 'Not specified'}`;
 
-    const subject = `New Lead Available — Unlock for ${priceText}`;
+    const subject = 'New Customer Request — Details Available';
     const html = this.buildAcceptEmailHtml({
       providerName: provider.name,
       leadSummaryText,
-      acceptUrl,
-      priceText
+      acceptUrl
     });
 
-    const text = `New Lead Available\n\nUnlock full contact details for ${priceText}.\n\n${leadSummaryText}\n\nAccept & Unlock: ${acceptUrl}`;
+    const text = `Hi ${provider.name || ''},\n\nYou have a new customer request.\n\nHere's a preview of the request:\n\n${leadSummaryText}\n\nThis customer is currently looking to book.\n\nIf you choose to access this request, the full contact details will be sent to you immediately by email.\n\nAccess full details here: ${acceptUrl}\n\nWe recommend responding quickly to increase your chances of securing the booking.\n\nIf you need help, just reply to this email.\n\nBest,\nGold Touch List Team`;
 
     return await this.sendMail({ to: provider.email, subject, html, text });
   }
@@ -149,13 +154,13 @@ class EmailService {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lead Unlocked</title>
+  <title>Your Customer Details</title>
 </head>
 <body style="font-family: Arial, sans-serif; background:#f6f7f9; padding:24px;">
   <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; padding:24px;">
-    <h2 style="margin:0 0 12px 0;">Lead Unlocked</h2>
+    <h2 style="margin:0 0 12px 0;">Your Customer Details</h2>
     <p style="margin:0 0 16px 0; color:#333;">Hi${providerName ? ` ${providerName}` : ''},</p>
-    <p style="margin:0 0 16px 0; color:#333;">Here are the full client details:</p>
+    <p style="margin:0 0 16px 0; color:#333;">Thank you for your purchase. Here are the full contact details for your customer request:</p>
 
     <div style="background:#f3f4f6; border-radius:10px; padding:14px;">
       <p style="margin:0 0 8px 0;"><strong>Client:</strong> ${privateDetails.client_name}</p>
@@ -166,7 +171,9 @@ class EmailService {
       <p style="margin:0;"><strong>When:</strong> ${whenText}</p>
     </div>
 
-    <p style="margin:16px 0 0 0; color:#6b7280; font-size:13px;">Gold Touch List provides advertising access to client inquiries. We do not arrange or guarantee appointments.</p>
+    <p style="margin:16px 0 0 0; color:#333;">We recommend reaching out to the customer as soon as possible to secure the booking.</p>
+    <p style="margin:8px 0 0 0; color:#333;">If you need help, just reply to this email.</p>
+    <p style="margin:16px 0 0 0; color:#333;">Best,<br/>Gold Touch List Team</p>
   </div>
 </body>
 </html>`;
@@ -175,14 +182,14 @@ class EmailService {
   static async sendUnlockedDetailsEmail({ provider, privateDetails, publicDetails }) {
     if (!provider?.email) return { skipped: true };
 
-    const subject = 'Lead Unlocked — Full Client Details';
+    const subject = 'Your Customer Details Are Ready';
     const html = this.buildUnlockedDetailsEmailHtml({
       providerName: provider.name,
       privateDetails,
       publicDetails
     });
 
-    const text = `Lead Unlocked\n\nClient: ${privateDetails.client_name}\nPhone: ${privateDetails.client_phone}\nEmail: ${privateDetails.client_email || 'Not provided'}\nAddress: ${privateDetails.exact_address || privateDetails.city || ''}\nService: ${publicDetails.service_type}\nWhen: ${publicDetails.preferred_time_window || 'Flexible'}`;
+    const text = `Hi ${provider.name || ''},\n\nThank you for your purchase. Here are the full contact details for your customer request:\n\nClient: ${privateDetails.client_name}\nPhone: ${privateDetails.client_phone}\nEmail: ${privateDetails.client_email || 'Not provided'}\nAddress: ${privateDetails.exact_address || privateDetails.city || ''}\nService: ${publicDetails.service_type}\nWhen: ${publicDetails.preferred_time_window || 'Flexible'}\n\nWe recommend reaching out to the customer as soon as possible to secure the booking.\n\nIf you need help, just reply to this email.\n\nBest,\nGold Touch List Team`;
 
     return await this.sendMail({ to: provider.email, subject, html, text });
   }

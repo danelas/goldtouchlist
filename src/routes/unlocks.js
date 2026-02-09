@@ -109,7 +109,7 @@ router.get('/success', async (req, res) => {
         <div class="container">
             <div class="success-icon">✅</div>
             <h1>Payment Successful!</h1>
-            <p>Thank you for your payment. The lead contact details have been sent to your phone via SMS.</p>
+            <p>Thank you for your payment. The client details have been sent to your phone via SMS and email.</p>
             
             ${lead_id ? `<div class="lead-id">Lead ID: ${lead_id}</div>` : ''}
             
