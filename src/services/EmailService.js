@@ -1,17 +1,32 @@
-const axios = require('axios');
+const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const PricingService = require('./PricingService');
 
 class EmailService {
   static isEnabled() {
     return !!(
-      process.env.TEXTMAGIC_USERNAME &&
-      process.env.TEXTMAGIC_API_KEY
+      process.env.SMTP_HOST &&
+      process.env.SMTP_PORT &&
+      process.env.SMTP_USER &&
+      process.env.SMTP_PASS
     );
   }
 
-  static getFromEmail() {
-    return process.env.TEXTMAGIC_EMAIL_FROM || 'hello@goldtouchlist.com';
+  static getTransporter() {
+    const port = parseInt(process.env.SMTP_PORT, 10);
+    const secure = process.env.SMTP_SECURE
+      ? process.env.SMTP_SECURE.toString().toLowerCase() === 'true'
+      : port === 465;
+
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
   }
 
   static getAcceptToken({ leadId, providerId, expiresAtMs }) {
@@ -58,36 +73,22 @@ class EmailService {
 
   static async sendMail({ to, subject, html, text }) {
     if (!this.isEnabled()) {
-      console.log('EmailService disabled (missing TEXTMAGIC_USERNAME or TEXTMAGIC_API_KEY)');
+      console.log('EmailService disabled (missing SMTP env vars)');
       return { skipped: true };
     }
 
-    const baseUrl = 'https://rest.textmagic.com/api/v2';
-    const from = this.getFromEmail();
+    const from = process.env.SMTP_FROM || 'hello@goldtouchlist.com';
+    const transporter = this.getTransporter();
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      text
+    });
 
-    try {
-      const response = await axios.post(`${baseUrl}/emails`, {
-        from,
-        to,
-        subject,
-        html,
-        text
-      }, {
-        auth: {
-          username: process.env.TEXTMAGIC_USERNAME,
-          password: process.env.TEXTMAGIC_API_KEY
-        },
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('TextMagic email sent successfully:', response.data);
-      return { messageId: response.data.id, success: true, data: response.data };
-    } catch (error) {
-      console.error('Error sending email via TextMagic:', error.response?.data || error.message);
-      throw error;
-    }
+    console.log('Email sent successfully:', info.messageId);
+    return { messageId: info.messageId, accepted: info.accepted, rejected: info.rejected };
   }
 
   static buildAcceptEmailHtml({ providerName, leadSummaryText, acceptUrl, priceText }) {
