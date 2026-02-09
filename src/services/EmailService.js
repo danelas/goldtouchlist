@@ -107,9 +107,9 @@ class EmailService {
     <p style="margin:0 0 8px 0; color:#333;">Here's a preview of the request:</p>
     <pre style="white-space:pre-wrap; background:#f3f4f6; border-radius:10px; padding:14px; color:#111;">${leadSummaryText}</pre>
     <p style="margin:16px 0 0 0; color:#333;">This customer is currently looking to book.</p>
-    <p style="margin:8px 0 0 0; color:#333;">If you choose to access this request, the full contact details will be sent to you immediately by email.</p>
+    <p style="margin:8px 0 0 0; color:#333;">If you choose to access this request, the full contact details will be sent to you immediately by SMS and email.</p>
     <div style="margin:18px 0 10px 0; text-align:center;">
-      <a href="${acceptUrl}" style="display:inline-block; padding:14px 18px; background:#111827; color:#fff; border-radius:10px; text-decoration:none; font-weight:700;">Access Full Details</a>
+      <a href="${acceptUrl}" style="display:inline-block; padding:14px 18px; background:#BE8A4D; color:#fff; border-radius:10px; text-decoration:none; font-weight:700;">Access Full Details</a>
     </div>
     <p style="margin:10px 0 0 0; color:#6b7280; font-size:13px;">If the button doesn't work, copy and paste this link into your browser:</p>
     <p style="margin:6px 0 0 0; font-size:13px; word-break:break-all;"><a href="${acceptUrl}">${acceptUrl}</a></p>
@@ -141,7 +141,7 @@ class EmailService {
       acceptUrl
     });
 
-    const text = `Hi ${provider.name || ''},\n\nYou have a new customer request.\n\nHere's a preview of the request:\n\n${leadSummaryText}\n\nThis customer is currently looking to book.\n\nIf you choose to access this request, the full contact details will be sent to you immediately by email.\n\nAccess full details here: ${acceptUrl}\n\nWe recommend responding quickly to increase your chances of securing the booking.\n\nIf you need help, just reply to this email.\n\nBest,\nGold Touch List Team`;
+    const text = `Hi ${provider.name || ''},\n\nYou have a new customer request.\n\nHere's a preview of the request:\n\n${leadSummaryText}\n\nThis customer is currently looking to book.\n\nIf you choose to access this request, the full contact details will be sent to you immediately by SMS and email.\n\nAccess full details here: ${acceptUrl}\n\nWe recommend responding quickly to increase your chances of securing the booking.\n\nIf you need help, just reply to this email.\n\nBest,\nGold Touch List Team`;
 
     return await this.sendMail({ to: provider.email, subject, html, text });
   }
