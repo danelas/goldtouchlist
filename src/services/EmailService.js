@@ -148,31 +148,35 @@ class EmailService {
 
   static buildUnlockedDetailsEmailHtml({ providerName, privateDetails, publicDetails }) {
     const whenText = publicDetails?.preferred_time_window || 'Flexible';
+    const addressText = privateDetails.exact_address || [privateDetails.city, publicDetails.zip_code].filter(Boolean).join(', ') || '';
 
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your Customer Details</title>
+  <title>Customer Details</title>
 </head>
 <body style="font-family: Arial, sans-serif; background:#f6f7f9; padding:24px;">
   <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; padding:24px;">
-    <h2 style="margin:0 0 12px 0;">Your Customer Details</h2>
+    <h2 style="margin:0 0 12px 0;">Customer Details</h2>
     <p style="margin:0 0 16px 0; color:#333;">Hi${providerName ? ` ${providerName}` : ''},</p>
-    <p style="margin:0 0 16px 0; color:#333;">Thank you for your purchase. Here are the full contact details for your customer request:</p>
+    <p style="margin:0 0 16px 0; color:#333;">Your purchase is complete, and the customer's full contact details are now available.</p>
+    <p style="margin:0 0 8px 0; color:#333;">Here is the information:</p>
 
     <div style="background:#f3f4f6; border-radius:10px; padding:14px;">
       <p style="margin:0 0 8px 0;"><strong>Client:</strong> ${privateDetails.client_name}</p>
       <p style="margin:0 0 8px 0;"><strong>Phone:</strong> ${privateDetails.client_phone}</p>
       <p style="margin:0 0 8px 0;"><strong>Email:</strong> ${privateDetails.client_email || 'Not provided'}</p>
-      <p style="margin:0 0 8px 0;"><strong>Address:</strong> ${privateDetails.exact_address || privateDetails.city || ''}</p>
+      <p style="margin:0 0 8px 0;"><strong>Address:</strong> ${addressText}</p>
+      <p style="margin:0 0 8px 0;"><strong>Contact Pref:</strong> ${publicDetails.contactpref || 'Not specified'}</p>
       <p style="margin:0 0 8px 0;"><strong>Service:</strong> ${publicDetails.service_type}</p>
       <p style="margin:0;"><strong>When:</strong> ${whenText}</p>
     </div>
 
-    <p style="margin:16px 0 0 0; color:#333;">We recommend reaching out to the customer as soon as possible to secure the booking.</p>
-    <p style="margin:8px 0 0 0; color:#333;">If you need help, just reply to this email.</p>
+    <p style="margin:16px 0 0 0; color:#333;">We recommend reaching out as soon as possible to introduce yourself and confirm availability.</p>
+    <p style="margin:8px 0 0 0; color:#333;">Quick responses increase the chances of securing the booking.</p>
+    <p style="margin:8px 0 0 0; color:#333;">If you need any assistance, feel free to reply to this email.</p>
     <p style="margin:16px 0 0 0; color:#333;">Best,<br/>Gold Touch List Team</p>
   </div>
 </body>
@@ -182,14 +186,15 @@ class EmailService {
   static async sendUnlockedDetailsEmail({ provider, privateDetails, publicDetails }) {
     if (!provider?.email) return { skipped: true };
 
-    const subject = 'Your Customer Details Are Ready';
+    const subject = 'Customer Details \u2014 Ready to Connect';
+    const addressText = privateDetails.exact_address || [privateDetails.city, publicDetails.zip_code].filter(Boolean).join(', ') || '';
     const html = this.buildUnlockedDetailsEmailHtml({
       providerName: provider.name,
       privateDetails,
       publicDetails
     });
 
-    const text = `Hi ${provider.name || ''},\n\nThank you for your purchase. Here are the full contact details for your customer request:\n\nClient: ${privateDetails.client_name}\nPhone: ${privateDetails.client_phone}\nEmail: ${privateDetails.client_email || 'Not provided'}\nAddress: ${privateDetails.exact_address || privateDetails.city || ''}\nService: ${publicDetails.service_type}\nWhen: ${publicDetails.preferred_time_window || 'Flexible'}\n\nWe recommend reaching out to the customer as soon as possible to secure the booking.\n\nIf you need help, just reply to this email.\n\nBest,\nGold Touch List Team`;
+    const text = `Hi ${provider.name || ''},\n\nYour purchase is complete, and the customer's full contact details are now available.\n\nHere is the information:\n\nClient: ${privateDetails.client_name}\nPhone: ${privateDetails.client_phone}\nEmail: ${privateDetails.client_email || 'Not provided'}\nAddress: ${addressText}\nContact Pref: ${publicDetails.contactpref || 'Not specified'}\nService: ${publicDetails.service_type}\nWhen: ${publicDetails.preferred_time_window || 'Flexible'}\n\nWe recommend reaching out as soon as possible to introduce yourself and confirm availability.\n\nQuick responses increase the chances of securing the booking.\n\nIf you need any assistance, feel free to reply to this email.\n\nBest,\nGold Touch List Team`;
 
     return await this.sendMail({ to: provider.email, subject, html, text });
   }
