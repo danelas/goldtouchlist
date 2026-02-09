@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Provider = require('../models/Provider');
+const MailerLiteService = require('../services/MailerLiteService');
 
 // Unified provider management endpoint
 router.all('/manage', express.json(), async (req, res) => {
@@ -100,6 +101,18 @@ async function createProvider(req, res, data) {
   };
 
   const provider = await Provider.create(newProviderData);
+
+  // Sync to MailerLite contact list
+  try {
+    await MailerLiteService.addSubscriber({
+      email: provider.email,
+      name: provider.name,
+      phone: provider.phone,
+      providerId: provider.id
+    });
+  } catch (mlError) {
+    console.error('MailerLite sync failed (provider still created):', mlError.message);
+  }
 
   return res.status(201).json({
     success: true,

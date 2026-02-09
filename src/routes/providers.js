@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Provider = require('../models/Provider');
+const MailerLiteService = require('../services/MailerLiteService');
 
 // Ensure JSON parsing for admin routes
 router.use('/admin', express.json());
@@ -360,6 +361,18 @@ router.post('/admin', express.json(), async (req, res) => {
     };
 
     const provider = await Provider.create(newProviderData);
+
+    // Sync to MailerLite contact list
+    try {
+      await MailerLiteService.addSubscriber({
+        email: provider.email,
+        name: provider.name,
+        phone: provider.phone,
+        providerId: provider.id
+      });
+    } catch (mlError) {
+      console.error('MailerLite sync failed (provider still created):', mlError.message);
+    }
 
     res.status(201).json({
       success: true,
