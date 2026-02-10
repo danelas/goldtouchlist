@@ -1,6 +1,5 @@
 const Lead = require('../models/Lead');
 const LeadProcessor = require('../services/LeadProcessor');
-const MailerLiteService = require('../services/MailerLiteService');
 const Joi = require('joi');
 const crypto = require('crypto');
 
@@ -148,18 +147,6 @@ class WebhookController {
 
       const provider = await Provider.create(providerData);
       console.log('Provider created from WordPress user:', provider.id);
-
-      // Sync to MailerLite contact list
-      try {
-        await MailerLiteService.addSubscriber({
-          email: provider.email,
-          name: provider.name,
-          phone: provider.phone,
-          providerId: provider.id
-        });
-      } catch (mlError) {
-        console.error('MailerLite sync failed (provider still created):', mlError.message);
-      }
 
       res.json({ 
         success: true, 

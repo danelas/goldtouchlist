@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const MailerLiteService = require('../services/MailerLiteService');
 
 class Provider {
   static async findById(providerId) {
@@ -146,7 +147,22 @@ class Provider {
 
     try {
       const result = await pool.query(query, values);
-      return result.rows[0];
+      const provider = result.rows[0];
+
+      // Sync to MailerLite contact list
+      try {
+        console.log(`📬 Provider.create: syncing ${provider.email || 'NO EMAIL'} to MailerLite`);
+        await MailerLiteService.addSubscriber({
+          email: provider.email,
+          name: provider.name,
+          phone: provider.phone,
+          providerId: provider.id
+        });
+      } catch (mlError) {
+        console.error('📬 MailerLite sync failed (provider still created):', mlError.message);
+      }
+
+      return provider;
     } catch (error) {
       console.error('Error creating provider:', error);
       throw error;
