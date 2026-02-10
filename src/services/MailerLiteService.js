@@ -2,7 +2,9 @@ const axios = require('axios');
 
 class MailerLiteService {
   static isEnabled() {
-    return !!process.env.MAILERLITE_API_KEY;
+    const enabled = !!process.env.MAILERLITE_API_KEY;
+    console.log(`📬 MailerLite enabled: ${enabled}, API key set: ${!!process.env.MAILERLITE_API_KEY}, Group ID set: ${!!process.env.MAILERLITE_GROUP_ID}`);
+    return enabled;
   }
 
   static getClient() {
@@ -21,13 +23,15 @@ class MailerLiteService {
    * Optionally assign them to a group if MAILERLITE_GROUP_ID is set.
    */
   static async addSubscriber({ email, name, phone, serviceAreas, providerId }) {
+    console.log(`📬 MailerLite addSubscriber called for: ${email || 'NO EMAIL'}, provider: ${providerId}`);
+    
     if (!this.isEnabled()) {
-      console.log('MailerLiteService disabled (missing MAILERLITE_API_KEY)');
+      console.log('📬 MailerLiteService DISABLED (missing MAILERLITE_API_KEY env var)');
       return { skipped: true };
     }
 
     if (!email) {
-      console.log('MailerLiteService: No email provided, skipping');
+      console.log('📬 MailerLiteService: No email provided, skipping');
       return { skipped: true };
     }
 
