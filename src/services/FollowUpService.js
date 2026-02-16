@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 
-const FOLLOW_UP_DELAY_MINUTES = 20; // Send follow-up 20 minutes after reveal
+const FOLLOW_UP_AFTER_BOOKING_MINUTES = 15; // Send follow-up 15 minutes after booking date/time
+const FOLLOW_UP_FALLBACK_MINUTES = 30; // Fallback: 30 minutes after reveal if no booking time
 const PROVIDER_REMINDER_DELAY_MINUTES = 15; // Remind provider 15 minutes after teaser if no unlock
 
 // Status flow: SCHEDULED -> SENT -> YES_REPLIED | NO_REPLIED -> RECOVERY_OFFERED -> RECOVERY_ACCEPTED | COMPLETED | EXPIRED
@@ -10,7 +11,7 @@ class FollowUpService {
   /**
    * Schedule a follow-up SMS to the client after their lead is revealed to a provider.
    */
-  static async scheduleFollowUp({ leadId, providerId, clientPhone, clientName, providerName }) {
+  static async scheduleFollowUp({ leadId, providerId, clientPhone, clientName, providerName, bookingTime }) {
     if (!clientPhone) {
       console.log('📞 FollowUp: No client phone, skipping follow-up');
       return null;
@@ -27,7 +28,22 @@ class FollowUpService {
       return existing.rows[0];
     }
 
-    const sendAfter = new Date(Date.now() + FOLLOW_UP_DELAY_MINUTES * 60 * 1000);
+    // Schedule 15 min after booking date/time; fall back to 30 min from now if no booking time
+    let sendAfter;
+    if (bookingTime) {
+      const bookingDate = new Date(bookingTime);
+      if (!isNaN(bookingDate.getTime()) && bookingDate.getTime() > Date.now()) {
+        sendAfter = new Date(bookingDate.getTime() + FOLLOW_UP_AFTER_BOOKING_MINUTES * 60 * 1000);
+        console.log(`📞 FollowUp: Using booking time ${bookingDate.toISOString()} + 15 min`);
+      } else {
+        // Booking time is in the past or invalid — use fallback
+        sendAfter = new Date(Date.now() + FOLLOW_UP_FALLBACK_MINUTES * 60 * 1000);
+        console.log(`📞 FollowUp: Booking time past/invalid, using fallback ${FOLLOW_UP_FALLBACK_MINUTES} min from now`);
+      }
+    } else {
+      sendAfter = new Date(Date.now() + FOLLOW_UP_FALLBACK_MINUTES * 60 * 1000);
+      console.log(`📞 FollowUp: No booking time provided, using fallback ${FOLLOW_UP_FALLBACK_MINUTES} min from now`);
+    }
 
     const result = await pool.query(`
       INSERT INTO follow_ups (lead_id, provider_id, client_phone, client_name, provider_name, status, send_after)

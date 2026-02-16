@@ -55,7 +55,7 @@ router.get('/success', async (req, res) => {
               revealed_at: now
             });
 
-            // Schedule follow-up SMS to client (20 min later)
+            // Schedule follow-up SMS to client (15 min after booking time)
             try {
               const FollowUpService = require('../services/FollowUpService');
               await FollowUpService.scheduleFollowUp({
@@ -63,7 +63,8 @@ router.get('/success', async (req, res) => {
                 providerId: provider_id,
                 clientPhone: leadDetails.client_phone,
                 clientName: leadDetails.client_name,
-                providerName: provider.name
+                providerName: provider.name,
+                bookingTime: publicDetails.preferred_time_window
               });
             } catch (fuErr) {
               console.error('[Success Page Fallback] Follow-up scheduling failed:', fuErr.message);
