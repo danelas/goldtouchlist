@@ -304,9 +304,25 @@ app.listen(PORT, () => {
 
         const addUnlockPriceColumn = require('./migrations/add_unlock_price_column');
         await addUnlockPriceColumn();
+
+        const addFollowUpsTable = require('./migrations/add_follow_ups_table');
+        await addFollowUpsTable.up();
       } catch (migrationError) {
         console.error('Migration error:', migrationError);
       }
+
+      // Start follow-up SMS scheduler (checks every 60 seconds)
+      const FollowUpService = require('./services/FollowUpService');
+      setInterval(async () => {
+        try {
+          await FollowUpService.processScheduledFollowUps();
+          await FollowUpService.processProviderReminders();
+          await FollowUpService.expireStaleFollowUps();
+        } catch (err) {
+          console.error('Follow-up scheduler error:', err.message);
+        }
+      }, 60 * 1000);
+      console.log('📞 Follow-up SMS scheduler started (60s interval)');
     }
   });
 });

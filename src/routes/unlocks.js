@@ -54,6 +54,20 @@ router.get('/success', async (req, res) => {
             await Unlock.updateStatus(lead_id, provider_id, 'REVEALED', {
               revealed_at: now
             });
+
+            // Schedule follow-up SMS to client (20 min later)
+            try {
+              const FollowUpService = require('../services/FollowUpService');
+              await FollowUpService.scheduleFollowUp({
+                leadId: lead_id,
+                providerId: provider_id,
+                clientPhone: leadDetails.client_phone,
+                clientName: leadDetails.client_name,
+                providerName: provider.name
+              });
+            } catch (fuErr) {
+              console.error('[Success Page Fallback] Follow-up scheduling failed:', fuErr.message);
+            }
             
             console.log(`[Success Page Fallback] ✅ Successfully revealed via fallback!`);
           }

@@ -565,6 +565,20 @@ class WebhookController {
           revealed_at: now
         });
 
+        // Schedule follow-up SMS to client (20 min later)
+        try {
+          const FollowUpService = require('../services/FollowUpService');
+          await FollowUpService.scheduleFollowUp({
+            leadId,
+            providerId,
+            clientPhone: leadDetails.client_phone,
+            clientName: leadDetails.client_name,
+            providerName: provider.name
+          });
+        } catch (fuErr) {
+          console.error('Error scheduling follow-up (reveal still succeeded):', fuErr.message);
+        }
+
         console.log(`Successfully revealed lead details to provider ${providerId}`);
       }
 

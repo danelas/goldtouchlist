@@ -125,8 +125,21 @@ router.post('/sms/incoming', express.json(), async (req, res) => {
     }
 
     console.log(`Processing SMS: ${from} -> "${text}"`);
-    
-    // Process the incoming message
+
+    // Check if this is a client replying to a follow-up SMS (before provider check)
+    const FollowUpService = require('../services/FollowUpService');
+    const followUpResult = await FollowUpService.handleClientReply(from, text);
+
+    if (followUpResult.handled) {
+      console.log('📞 SMS handled as client follow-up reply:', followUpResult.action);
+      return res.json({
+        success: true,
+        action: followUpResult.action,
+        message_id: messageId
+      });
+    }
+
+    // Not a follow-up reply — process as provider response
     const result = await LeadProcessor.handleProviderResponse(from, text);
     
     console.log('Processing result:', result);

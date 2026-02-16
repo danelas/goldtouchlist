@@ -206,6 +206,19 @@ class LeadProcessor {
         last_sent_at: now
       });
 
+      // Schedule provider reminder if they don't unlock within 15 min
+      try {
+        const FollowUpService = require('./FollowUpService');
+        await FollowUpService.scheduleProviderReminder({
+          leadId,
+          providerId,
+          providerPhone: provider.phone,
+          providerName: provider.name
+        });
+      } catch (fuErr) {
+        console.error('Error scheduling provider reminder (teaser still sent):', fuErr.message);
+      }
+
       console.log(`Teaser sent to provider ${providerId} for lead ${leadId}`);
 
     } catch (error) {
