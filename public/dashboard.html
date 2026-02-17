@@ -256,7 +256,7 @@
         <!-- Charts -->
         <div class="charts-grid">
             <div class="chart-card">
-                <h2>Daily Leads (Last 30 Days)</h2>
+                <h2>Daily Customers (Last 30 Days)</h2>
                 <canvas id="dailyLeadsChart"></canvas>
             </div>
             <div class="chart-card">
@@ -273,7 +273,7 @@
                 <thead>
                     <tr>
                         <th>City</th>
-                        <th>Leads Today</th>
+                        <th>Customers Today</th>
                         <th>Unlocks Today</th>
                         <th>Unlock Rate</th>
                         <th>Paid Rate</th>
@@ -424,9 +424,9 @@
         function renderSummary(summary) {
             const html = `
                 <div class="summary-card">
-                    <h3>Leads Today</h3>
+                    <h3>Customers Today</h3>
                     <div class="value">${summary.leadsToday}</div>
-                    <div class="change positive">New leads today</div>
+                    <div class="change positive">New customers today</div>
                 </div>
                 <div class="summary-card">
                     <h3>Unlocks Today</h3>
@@ -454,7 +454,7 @@
                 data: {
                     labels: data.map(d => new Date(d.date).toLocaleDateString()),
                     datasets: [{
-                        label: 'Leads',
+                        label: 'Customers',
                         data: data.map(d => d.leads_count),
                         borderColor: '#3b82f6',
                         backgroundColor: '#dbeafe',
