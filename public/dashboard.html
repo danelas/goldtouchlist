@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Gold Touch List</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .summary-card h3 {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .summary-card .change {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .positive {
+            color: #059669;
+        }
+
+        .negative {
+            color: #dc2626;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .chart-card h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #0f172a;
+        }
+
+        .table-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .table-card h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #0f172a;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-table th {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.875rem;
+        }
+
+        .data-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+        }
+
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: #dc2626;
+            background: #fee2e2;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.25rem;
+        }
+
+        .activity-lead {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .activity-unlock {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .activity-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Analytics Dashboard</h1>
+    </div>
+
+    <div class="container">
+        <!-- Summary Cards -->
+        <div class="summary-grid" id="summaryGrid">
+            <div class="loading">Loading summary...</div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2>Daily Leads (Last 30 Days)</h2>
+                <canvas id="dailyLeadsChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2>Conversion Funnel</h2>
+                <canvas id="funnelChart"></canvas>
+            </div>
+        </div>
+
+        <!-- City Stats -->
+        <div class="table-card">
+            <h2>City Performance Today</h2>
+            <div id="cityStatsLoading" class="loading">Loading city data...</div>
+            <table class="data-table" id="cityStatsTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>City</th>
+                        <th>Leads Today</th>
+                        <th>Unlocks Today</th>
+                        <th>Unlock Rate</th>
+                        <th>Paid Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="cityStatsBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Provider Response Rates -->
+        <div class="table-card">
+            <h2>Provider Response Rates (Last 30 Days)</h2>
+            <div id="providerResponsesLoading" class="loading">Loading provider data...</div>
+            <table class="data-table" id="providerResponsesTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Phone</th>
+                        <th>Total Teasers</th>
+                        <th>Responses</th>
+                        <th>Response Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="providerResponsesBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="table-card">
+            <h2>Recent Activity</h2>
+            <div id="activityLoading" class="loading">Loading activity...</div>
+            <div id="activityList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        function formatTimeAgo(timestamp) {
+            const now = new Date();
+            const time = new Date(timestamp);
+            const diffMs = now - time;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            const diffDays = Math.floor(diffHours / 24);
+            return `${diffDays}d ago`;
+        }
+
+        // API calls
+        async function fetchSummary() {
+            try {
+                const response = await fetch('/analytics/dashboard/summary');
+                const data = await response.json();
+                if (data.success) {
+                    renderSummary(data.summary);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('summaryGrid').innerHTML = 
+                    `<div class="error">Error loading summary: ${error.message}</div>`;
+            }
+        }
+
+        async function fetchDailyLeads() {
+            try {
+                const response = await fetch('/analytics/dashboard/daily-leads?days=30');
+                const data = await response.json();
+                if (data.success) {
+                    renderDailyLeadsChart(data.dailyLeads);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Error loading daily leads:', error);
+            }
+        }
+
+        async function fetchFunnel() {
+            try {
+                const response = await fetch('/analytics/dashboard/funnel?days=30');
+                const data = await response.json();
+                if (data.success) {
+                    renderFunnelChart(data.funnel);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Error loading funnel:', error);
+            }
+        }
+
+        async function fetchCityStats() {
+            try {
+                const response = await fetch('/analytics/dashboard/cities');
+                const data = await response.json();
+                if (data.success) {
+                    renderCityStats(data.cityStats);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('cityStatsLoading').innerHTML = 
+                    `<div class="error">Error loading city data: ${error.message}</div>`;
+            }
+        }
+
+        async function fetchProviderResponses() {
+            try {
+                const response = await fetch('/analytics/dashboard/provider-responses?days=30');
+                const data = await response.json();
+                if (data.success) {
+                    renderProviderResponses(data.responseRates);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('providerResponsesLoading').innerHTML = 
+                    `<div class="error">Error loading provider data: ${error.message}</div>`;
+            }
+        }
+
+        async function fetchActivity() {
+            try {
+                const response = await fetch('/analytics/dashboard/activity?limit=20');
+                const data = await response.json();
+                if (data.success) {
+                    renderActivity(data.activity);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('activityLoading').innerHTML = 
+                    `<div class="error">Error loading activity: ${error.message}</div>`;
+            }
+        }
+
+        // Render functions
+        function renderSummary(summary) {
+            const html = `
+                <div class="summary-card">
+                    <h3>Leads Today</h3>
+                    <div class="value">${summary.leadsToday}</div>
+                    <div class="change positive">New leads today</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Unlocks Today</h3>
+                    <div class="value">${summary.unlocksToday}</div>
+                    <div class="change positive">Provider unlocks today</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Revenue Today</h3>
+                    <div class="value">${formatCurrency(summary.revenueToday)}</div>
+                    <div class="change positive">Today's earnings</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Revenue</h3>
+                    <div class="value">${formatCurrency(summary.totalRevenue)}</div>
+                    <div class="change positive">All-time earnings</div>
+                </div>
+            `;
+            document.getElementById('summaryGrid').innerHTML = html;
+        }
+
+        function renderDailyLeadsChart(data) {
+            const ctx = document.getElementById('dailyLeadsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => new Date(d.date).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Leads',
+                        data: data.map(d => d.leads_count),
+                        borderColor: '#3b82f6',
+                        backgroundColor: '#dbeafe',
+                        tension: 0.4
+                    }, {
+                        label: 'Unique Customers',
+                        data: data.map(d => d.unique_customers),
+                        borderColor: '#10b981',
+                        backgroundColor: '#d1fae5',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderFunnelChart(data) {
+            const ctx = document.getElementById('funnelChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.stage),
+                    datasets: [{
+                        label: 'Count',
+                        data: data.map(d => d.count),
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCityStats(data) {
+            const tbody = document.getElementById('cityStatsBody');
+            tbody.innerHTML = data.map(city => `
+                <tr>
+                    <td><strong>${city.city}</strong></td>
+                    <td>${city.leads_today}</td>
+                    <td>${city.unlocks_today}</td>
+                    <td>
+                        <span class="badge ${city.unlock_rate_percent >= 50 ? 'badge-success' : city.unlock_rate_percent >= 25 ? 'badge-warning' : 'badge-danger'}">
+                            ${city.unlock_rate_percent}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${city.paid_rate_percent >= 50 ? 'badge-success' : city.paid_rate_percent >= 25 ? 'badge-warning' : 'badge-danger'}">
+                            ${city.paid_rate_percent}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('cityStatsLoading').style.display = 'none';
+            document.getElementById('cityStatsTable').style.display = 'table';
+        }
+
+        function renderProviderResponses(data) {
+            const tbody = document.getElementById('providerResponsesBody');
+            tbody.innerHTML = data.map(provider => `
+                <tr>
+                    <td>${provider.name}</td>
+                    <td>${provider.phone}</td>
+                    <td>${provider.total_teasers}</td>
+                    <td>${provider.responses}</td>
+                    <td>
+                        <span class="badge ${provider.response_rate_percent >= 50 ? 'badge-success' : provider.response_rate_percent >= 25 ? 'badge-warning' : 'badge-danger'}">
+                            ${provider.response_rate_percent}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('providerResponsesLoading').style.display = 'none';
+            document.getElementById('providerResponsesTable').style.display = 'table';
+        }
+
+        function renderActivity(data) {
+            const html = data.map(item => `
+                <div class="activity-item">
+                    <div class="activity-icon activity-${item.type}">
+                        ${item.type === 'lead' ? '👤' : '🔓'}
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">${item.title}</div>
+                        <div class="activity-subtitle">${item.subtitle} • ${item.details}</div>
+                    </div>
+                    <div class="activity-time">${formatTimeAgo(item.timestamp)}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('activityLoading').style.display = 'none';
+            document.getElementById('activityList').innerHTML = html;
+        }
+
+        // Initialize dashboard
+        async function initDashboard() {
+            await Promise.all([
+                fetchSummary(),
+                fetchDailyLeads(),
+                fetchFunnel(),
+                fetchCityStats(),
+                fetchProviderResponses(),
+                fetchActivity()
+            ]);
+        }
+
+        // Auto-refresh every 5 minutes
+        setInterval(initDashboard, 5 * 60 * 1000);
+
+        // Load on page load
+        initDashboard();
+    </script>
+</body>
+</html>

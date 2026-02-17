@@ -188,6 +188,11 @@ app.get('/admin/providers', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'provider-management.html'));
 });
 
+// Analytics Dashboard
+app.get('/analytics/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html'));
+});
+
 // Form page for providers
 app.get('/form/:slug', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'form.html'));

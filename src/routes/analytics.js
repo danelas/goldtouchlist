@@ -186,4 +186,162 @@ router.get('/scheduled-leads', async (req, res) => {
   }
 });
 
+// City stats (leads today and unlock rates)
+router.get('/dashboard/cities', async (req, res) => {
+  try {
+    const AnalyticsService = require('../services/AnalyticsService');
+    const cityStats = await AnalyticsService.getCityStats();
+    
+    res.json({
+      success: true,
+      cityStats
+    });
+  } catch (error) {
+    console.error('Error getting city stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get city stats'
+    });
+  }
+});
+
+// Dashboard summary
+router.get('/dashboard/summary', async (req, res) => {
+  try {
+    const AnalyticsService = require('../services/AnalyticsService');
+    const summary = await AnalyticsService.getDashboardSummary();
+    
+    res.json({
+      success: true,
+      summary
+    });
+  } catch (error) {
+    console.error('Error getting dashboard summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get dashboard summary'
+    });
+  }
+});
+
+// Daily leads
+router.get('/dashboard/daily-leads', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const AnalyticsService = require('../services/AnalyticsService');
+    const dailyLeads = await AnalyticsService.getDailyLeads(days);
+    
+    res.json({
+      success: true,
+      dailyLeads
+    });
+  } catch (error) {
+    console.error('Error getting daily leads:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get daily leads'
+    });
+  }
+});
+
+// Provider response rates
+router.get('/dashboard/provider-responses', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const AnalyticsService = require('../services/AnalyticsService');
+    const responseRates = await AnalyticsService.getProviderResponseRates(days);
+    
+    res.json({
+      success: true,
+      responseRates
+    });
+  } catch (error) {
+    console.error('Error getting provider response rates:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get provider response rates'
+    });
+  }
+});
+
+// Revenue summary
+router.get('/dashboard/revenue', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const AnalyticsService = require('../services/AnalyticsService');
+    const revenue = await AnalyticsService.getRevenueSummary(days);
+    
+    res.json({
+      success: true,
+      revenue
+    });
+  } catch (error) {
+    console.error('Error getting revenue summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get revenue summary'
+    });
+  }
+});
+
+// Top service types
+router.get('/dashboard/service-types', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const AnalyticsService = require('../services/AnalyticsService');
+    const serviceTypes = await AnalyticsService.getTopServiceTypes(days);
+    
+    res.json({
+      success: true,
+      serviceTypes
+    });
+  } catch (error) {
+    console.error('Error getting top service types:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get top service types'
+    });
+  }
+});
+
+// Conversion funnel
+router.get('/dashboard/funnel', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const AnalyticsService = require('../services/AnalyticsService');
+    const funnel = await AnalyticsService.getConversionFunnel(days);
+    
+    res.json({
+      success: true,
+      funnel
+    });
+  } catch (error) {
+    console.error('Error getting conversion funnel:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get conversion funnel'
+    });
+  }
+});
+
+// Recent activity
+router.get('/dashboard/activity', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const AnalyticsService = require('../services/AnalyticsService');
+    const activity = await AnalyticsService.getRecentActivity(limit);
+    
+    res.json({
+      success: true,
+      activity
+    });
+  } catch (error) {
+    console.error('Error getting recent activity:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get recent activity'
+    });
+  }
+});
+
 module.exports = router;
