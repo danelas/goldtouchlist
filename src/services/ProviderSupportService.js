@@ -136,7 +136,7 @@ Never reveal any client data before an unlock is confirmed for that provider.`;
       console.error('Error getting AI response:', error);
       
       // Fallback response
-      return `Thanks for your question! For immediate help, visit goldtouchmobile.com or reply with specific questions about how Gold Touch List works.`;
+      return `Thanks for your question! For immediate help, visit goldtouchlist.com or reply with specific questions about how Gold Touch List works.`;
     }
   }
 
@@ -241,7 +241,7 @@ Keep it brief and action-oriented.
       // Generic response for other unknown contacts
       return {
         isProviderInquiry: false,
-        response: "Hi! Thanks for contacting Gold Touch List. Visit goldtouchmobile.com to browse verified wellness providers or learn about becoming a provider.",
+        response: "Hi! Thanks for contacting Gold Touch List. Visit goldtouchlist.com to browse verified wellness providers or learn about becoming a provider.",
         action: 'generic_response'
       };
       
@@ -249,7 +249,7 @@ Keep it brief and action-oriented.
       console.error('Error handling unknown contact:', error);
       return {
         isProviderInquiry: false,
-        response: "Hi! Thanks for contacting Gold Touch List.\nVisit goldtouchmobile.com to browse verified wellness providers and contact them directly for your session.",
+        response: "Hi! Thanks for contacting Gold Touch List.\nVisit goldtouchlist.com to browse verified wellness providers and contact them directly for your session.",
         action: 'fallback_response'
       };
     }

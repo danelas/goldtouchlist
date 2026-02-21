@@ -296,7 +296,7 @@ Someone just texted: "${message}"
 Generate a friendly, professional SMS response that:
 1. Thanks them for reaching out
 2. Briefly explains what Gold Touch List is
-3. Directs them to goldtouchmobile.com to browse providers
+3. Directs them to goldtouchlist.com to browse providers
 4. Is conversational and helpful
 5. Is under 160 characters (SMS limit)
 
@@ -333,7 +333,7 @@ Response format: Just the message text, no JSON or extra formatting.
     } catch (error) {
       console.error('Error generating auto-response with OpenAI:', error);
       // Fallback to the original static message
-      return "Hi! Thanks for contacting Gold Touch List.\nVisit goldtouchmobile.com to browse verified wellness providers and contact them directly for your session.";
+      return "Hi! Thanks for contacting Gold Touch List.\nVisit goldtouchlist.com to browse verified wellness providers and contact them directly for your session.";
     }
   }
 }

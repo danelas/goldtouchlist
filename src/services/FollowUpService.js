@@ -151,7 +151,7 @@ class FollowUpService {
         `, [followUp.id]);
 
         await SMSService.sendSMS(followUp.client_phone,
-          "Great! If you need anything else, we're here. Have a wonderful experience!\n\nYou can also browse other available providers here:\nhttps://goldtouchmobile.com"
+          "Great! If you need anything else, we're here. Have a wonderful experience!\n\nYou can also browse other available providers here:\nhttps://goldtouchlist.com"
         );
 
         console.log(`📞 FollowUp #${followUp.id}: Client confirmed provider reached out ✅`);
@@ -214,7 +214,7 @@ class FollowUpService {
         `, [followUp.id]);
 
         await SMSService.sendSMS(followUp.client_phone,
-          "No problem. If you change your mind, feel free to submit a new request at goldtouchmobile.com. Thank you!"
+          "No problem. If you change your mind, feel free to submit a new request at goldtouchlist.com. Thank you!"
         );
 
         console.log(`📞 FollowUp #${followUp.id}: Client declined recovery`);
@@ -243,7 +243,7 @@ class FollowUpService {
     const lead = await Lead.findById(followUp.lead_id);
     if (!lead) {
       await SMSService.sendSMS(followUp.client_phone,
-        "We're sorry, this request has expired. Please submit a new request at goldtouchmobile.com."
+        "We're sorry, this request has expired. Please submit a new request at goldtouchlist.com."
       );
       return;
     }
