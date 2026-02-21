@@ -872,4 +872,34 @@ router.get('/set-all-others-false', async (req, res) => {
   }
 });
 
+// Record manual outbound message
+router.post('/manual-message', express.json(), async (req, res) => {
+  try {
+    const { phone, message, aiContext } = req.body;
+    
+    if (!phone || !message) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['phone', 'message']
+      });
+    }
+    
+    const ManualMessageService = require('../services/ManualMessageService');
+    const result = await ManualMessageService.recordOutboundMessage(phone, message, aiContext);
+    
+    res.json({
+      success: true,
+      messageId: result.id,
+      message: 'Manual message recorded successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error recording manual message:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

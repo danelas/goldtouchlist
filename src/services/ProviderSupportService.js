@@ -38,6 +38,7 @@ Location: "We cater to all of Florida."
 Commission: "No. You keep 100% of what you earn."
 For skepticism: "Totally understand. You only pay if you choose to unlock. We send you a short preview first. No subscriptions required."
 Request frequency: "It varies by city and hours. In active areas you can see a few each week. Turn on more service areas to receive more."
+Subscription pricing: "Verified & Featured Profile is $9/month. Premium City Placement is $7/month."
 
 BUSINESS MODEL BENEFITS
 You can mention when appropriate: "It's a great model - if you accept and chat with the customer you could have a repeat customer for only $20."
@@ -169,6 +170,87 @@ Never reveal any client data before an unlock is confirmed for that provider.`;
       return {
         isQuestion: false,
         action: 'process_lead_response'
+      };
+    }
+  }
+
+  /**
+   * Handle unknown contact messages (potential providers)
+   */
+  async handleUnknownContact(phoneNumber, message) {
+    try {
+      console.log(`Handling unknown contact message from ${phoneNumber}: "${message}"`);
+      
+      // Check if this is a response to a manual message
+      const ManualMessageService = require('./ManualMessageService');
+      const manualContext = await ManualMessageService.getAIContext(phoneNumber, message);
+      
+      if (manualContext) {
+        console.log(`📝 Response to manual message detected - Original: "${manualContext.originalMessage.substring(0, 50)}..."`);
+        
+        // Build contextual prompt for AI
+        const contextualPrompt = `
+You are responding to a provider who replied to your manual outreach.
+
+Your original message: "${manualContext.originalMessage}"
+Their response: "${message}"
+
+Generate a warm, professional follow-up response that:
+1. Acknowledges their positive response (if yes/interested)
+2. Explains next steps for getting started
+3. Mentions subscription options if appropriate
+4. Is conversational and under 160 characters for SMS
+
+Context: ${manualContext.aiContext || 'Provider outreach'}
+
+Keep it brief and action-oriented.
+`;
+
+        const aiResponse = await this.getProviderSupportResponse(contextualPrompt, phoneNumber);
+        
+        return {
+          isManualMessageResponse: true,
+          originalMessage: manualContext.originalMessage,
+          response: aiResponse,
+          action: 'manual_message_followup'
+        };
+      }
+      
+      // Check if this looks like a provider inquiry
+      const providerKeywords = [
+        'provider', 'therapist', 'massage', 'wellness', 'service',
+        'join', 'sign up', 'register', 'list', 'add', 'subscription',
+        'how much', 'cost', 'price', 'fee', 'payment', 'pricing',
+        'verified', 'featured', 'premium', 'profile', 'placement'
+      ];
+      
+      const isProviderInquiry = providerKeywords.some(keyword => 
+        message.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      if (isProviderInquiry) {
+        // Use AI to generate a helpful response about becoming a provider
+        const aiResponse = await this.getProviderSupportResponse(message, phoneNumber);
+        return {
+          isProviderInquiry: true,
+          response: aiResponse,
+          action: 'provider_info_response'
+        };
+      }
+      
+      // Generic response for other unknown contacts
+      return {
+        isProviderInquiry: false,
+        response: "Hi! Thanks for contacting Gold Touch List. Visit goldtouchmobile.com to browse verified wellness providers or learn about becoming a provider.",
+        action: 'generic_response'
+      };
+      
+    } catch (error) {
+      console.error('Error handling unknown contact:', error);
+      return {
+        isProviderInquiry: false,
+        response: "Hi! Thanks for contacting Gold Touch List.\nVisit goldtouchmobile.com to browse verified wellness providers and contact them directly for your session.",
+        action: 'fallback_response'
       };
     }
   }

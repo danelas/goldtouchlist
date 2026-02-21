@@ -249,7 +249,7 @@ Thanks for using Gold Touch List!`;
       const provider = await Provider.findByPhone(phoneNumber);
       if (!provider) {
         console.log('Unknown phone number:', phoneNumber);
-        await this.handleUnknownNumber(phoneNumber);
+        await this.handleUnknownNumber(phoneNumber, originalMessage);
         return { action: 'unknown_number_auto_responded' };
       }
 
@@ -435,7 +435,7 @@ Thanks for using Gold Touch List!`;
     }
   }
 
-  async handleUnknownNumber(phoneNumber) {
+  async handleUnknownNumber(phoneNumber, message) {
     try {
       // Check if we've already sent the auto-responder to this number
       const pool = require('../config/database');
@@ -460,10 +460,11 @@ Thanks for using Gold Touch List!`;
         return { action: 'already_responded_today' };
       }
       
-      // Send the auto-response message
-      const autoResponseMessage = "Hi! Thanks for contacting Gold Touch List.\nVisit goldtouchmobile.com to browse verified wellness providers and contact them directly for your session.";
+      // Use AI to generate a contextual response based on the actual message
+      const ProviderSupportService = require('./ProviderSupportService');
+      const aiResponse = await ProviderSupportService.handleUnknownContact(phoneNumber, message);
       
-      await this.sendSMS(phoneNumber, autoResponseMessage);
+      await this.sendSMS(phoneNumber, aiResponse.response);
       
       // Record that we've sent the auto-response (update timestamp if exists)
       await pool.query(
@@ -471,8 +472,8 @@ Thanks for using Gold Touch List!`;
         [phoneNumber]
       );
       
-      console.log(`Sent auto-response to unknown number: ${phoneNumber}`);
-      return { action: 'auto_response_sent' };
+      console.log(`Sent AI-powered response to unknown number: ${phoneNumber} - ${aiResponse.action}`);
+      return { action: aiResponse.action, response: aiResponse.response };
       
     } catch (error) {
       console.error('Error handling unknown number:', error);

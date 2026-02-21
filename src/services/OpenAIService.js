@@ -282,6 +282,60 @@ Respond with JSON:
       };
     }
   }
+
+  /**
+   * Generate dynamic SMS response for unknown contacts
+   */
+  async generateAutoResponse(phoneNumber, message) {
+    try {
+      const prompt = `
+You are a helpful assistant for Gold Touch List, a wellness service marketplace.
+
+Someone just texted: "${message}"
+
+Generate a friendly, professional SMS response that:
+1. Thanks them for reaching out
+2. Briefly explains what Gold Touch List is
+3. Directs them to goldtouchmobile.com to browse providers
+4. Is conversational and helpful
+5. Is under 160 characters (SMS limit)
+
+Keep it warm and welcoming. Do not use emojis unless appropriate.
+
+Response format: Just the message text, no JSON or extra formatting.
+`;
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful customer service assistant for Gold Touch List. Generate concise, friendly SMS responses."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 100
+      });
+
+      const generatedMessage = response.choices[0].message.content.trim();
+      
+      // Ensure it's not too long for SMS
+      if (generatedMessage.length > 160) {
+        return generatedMessage.substring(0, 157) + "...";
+      }
+      
+      return generatedMessage;
+
+    } catch (error) {
+      console.error('Error generating auto-response with OpenAI:', error);
+      // Fallback to the original static message
+      return "Hi! Thanks for contacting Gold Touch List.\nVisit goldtouchmobile.com to browse verified wellness providers and contact them directly for your session.";
+    }
+  }
 }
 
 module.exports = new OpenAIService();

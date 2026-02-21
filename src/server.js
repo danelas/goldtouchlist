@@ -312,6 +312,9 @@ app.listen(PORT, () => {
 
         const addFollowUpsTable = require('./migrations/add_follow_ups_table');
         await addFollowUpsTable.up();
+
+        const addManualMessagesTable = require('./migrations/add_manual_messages_table');
+        await addManualMessagesTable.up();
       } catch (migrationError) {
         console.error('Migration error:', migrationError);
       }
