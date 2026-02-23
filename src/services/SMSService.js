@@ -93,16 +93,18 @@ class SMSService {
     console.log('City value:', leadData.city);
     console.log('Service type:', leadData.service_type);
     
-    // Format date without time since form only collects date
+    // Parse preferred time; build date label (MMM D) and a time-of-day bucket label
     // Handle both string dates from forms and Date objects from database
-    let timeWindow = 'Flexible';
-    if (leadData.preferred_time_window) {
+    let dateLabel = '';
+    let timeBucketText = 'Time: Flexible';
+    const rawTimeWindow = leadData.preferred_time_window || leadData['Time Window'] || leadData.date_time;
+    if (rawTimeWindow) {
       let parsedDate;
       
       // Convert to string if it's a Date object
-      const dateValue = typeof leadData.preferred_time_window === 'string' 
-        ? leadData.preferred_time_window 
-        : leadData.preferred_time_window.toString();
+      const dateValue = typeof rawTimeWindow === 'string' 
+        ? rawTimeWindow 
+        : rawTimeWindow.toString();
       
       // Try to parse different date formats
       if (dateValue.includes('.')) {
@@ -113,13 +115,50 @@ class SMSService {
         parsedDate = moment(dateValue, 'M/D/YYYY');
       } else {
         // Fallback to default parsing (handles ISO dates from database)
-        parsedDate = moment(leadData.preferred_time_window);
+        parsedDate = moment(rawTimeWindow);
       }
       
+      const hasTime = /am|pm|:/i.test(dateValue);
       if (parsedDate.isValid()) {
-        timeWindow = parsedDate.format('MMM D, YYYY');
+        // First line needs only date: "Feb 25"
+        dateLabel = parsedDate.format('MMM D');
+        if (hasTime) {
+          const hour = parsedDate.hour();
+          if (hour >= 17 && hour < 21) {
+            timeBucketText = 'Time: Evening (5–9pm)';
+          } else if (hour >= 12 && hour < 17) {
+            timeBucketText = 'Time: Afternoon (12–5pm)';
+          } else if (hour >= 8 && hour < 12) {
+            timeBucketText = 'Time: Morning (8–12pm)';
+          } else if (hour >= 21 || hour < 5) {
+            timeBucketText = 'Time: Night (9pm–5am)';
+          } else {
+            timeBucketText = 'Time: Early Morning (5–8am)';
+          }
+        }
       } else {
-        timeWindow = dateValue; // Use as-is if parsing fails
+        dateLabel = dateValue; // Use as-is if parsing fails
+      }
+    }
+
+    // If form provided a friendly Time label, prefer that over derived bucket
+    if (leadData.Time) {
+      const t = leadData.Time.toString().trim();
+      const lower = t.toLowerCase();
+      if (t.includes('(')) {
+        timeBucketText = `Time: ${t}`;
+      } else if (lower.includes('evening')) {
+        timeBucketText = 'Time: Evening (5–9pm)';
+      } else if (lower.includes('afternoon')) {
+        timeBucketText = 'Time: Afternoon (12–5pm)';
+      } else if (lower.includes('morning')) {
+        timeBucketText = 'Time: Morning (8–12pm)';
+      } else if (lower.includes('night')) {
+        timeBucketText = 'Time: Night (9pm–5am)';
+      } else if (lower.includes('flex') || lower.includes('any')) {
+        timeBucketText = 'Time: Flexible';
+      } else {
+        timeBucketText = `Time: ${t}`;
       }
     }
 
@@ -134,11 +173,26 @@ class SMSService {
 
     const priceText = PricingService.formatPriceFromCents(priceCents);
 
-    return `New request ${leadData.city} ${timeWindow}
-${leadData.service_type}
-${leadData.session_length || leadData.length || '60-min'} priority access
+    // Normalize session length for display
+    const sessionLenRaw = leadData.session_length || leadData.length || '';
+    const sessionLenNum = (sessionLenRaw && sessionLenRaw.toString().match(/\d+/)) 
+      ? parseInt(sessionLenRaw.toString().match(/\d+/)[0], 10) 
+      : null;
+    const sessionLenClean = sessionLenNum ? `${sessionLenNum} min` : '60 min';
+    const sessionLenMinutes = sessionLenNum || 60;
+
+    // Prefer ZIP when available; fall back to city, then any raw cityzip
+    const locationStr = (leadData.zip_code && leadData.zip_code.toString().trim())
+      || (leadData.city && leadData.city.toString().trim())
+      || (leadData.cityzip && leadData.cityzip.toString().trim())
+      || '';
+
+    return `New request – ${locationStr} ${dateLabel}
+${leadData.service_type} – ${sessionLenClean}
+${timeBucketText}
+Exclusive for ${sessionLenMinutes} minutes
 $${(priceCents / 100).toFixed(0)} unlock
-Reply Y`;
+Reply Y to unlock & view client`;
   }
 
   formatRevealMessage(privateDetails, publicDetails, leadId) {
