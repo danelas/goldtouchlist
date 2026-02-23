@@ -445,6 +445,14 @@ app.listen(PORT, () => {
       // Start follow-up SMS scheduler (checks every 60 seconds)
       const FollowUpService = require('./services/FollowUpService');
       const ProviderContactFollowUpService = require('./services/ProviderContactFollowUpService');
+
+      // Ensure provider_contact_followups table exists before scheduling
+      try {
+        await ProviderContactFollowUpService.ensureTableExists();
+        console.log('✅ provider_contact_followups table verified/created at startup');
+      } catch (e) {
+        console.error('Failed to ensure provider_contact_followups table at startup:', e.message);
+      }
       setInterval(async () => {
         try {
           await FollowUpService.processScheduledFollowUps();
