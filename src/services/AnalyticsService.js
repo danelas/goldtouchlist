@@ -26,19 +26,19 @@ class AnalyticsService {
     const result = await pool.query(`
       SELECT 
         l.city,
-        COUNT(DISTINCT l.client_id) as leads_today,
-        COUNT(DISTINCT u.client_id) as unlocks_today,
-        COUNT(DISTINCT u.client_id) as paid_today,
+        COUNT(DISTINCT l.lead_id) as leads_today,
+        COUNT(DISTINCT u.lead_id) as unlocks_today,
+        COUNT(DISTINCT u.lead_id) as paid_today,
         ROUND(
-          COUNT(DISTINCT u.client_id) * 100.0 / 
-          NULLIF(COUNT(DISTINCT l.client_id), 0), 2
+          COUNT(DISTINCT u.lead_id) * 100.0 / 
+          NULLIF(COUNT(DISTINCT l.lead_id), 0), 2
         ) as unlock_rate_percent,
         ROUND(
-          COUNT(DISTINCT CASE WHEN u.status = 'REVEALED' THEN u.client_id END) * 100.0 / 
-          NULLIF(COUNT(DISTINCT l.client_id), 0), 2
+          COUNT(DISTINCT CASE WHEN u.status = 'REVEALED' THEN u.lead_id END) * 100.0 / 
+          NULLIF(COUNT(DISTINCT l.lead_id), 0), 2
         ) as paid_rate_percent
       FROM leads l
-      LEFT JOIN unlocks u ON l.client_id = u.client_id 
+      LEFT JOIN unlocks u ON l.lead_id = u.lead_id 
         AND DATE(u.created_at) = CURRENT_DATE
       WHERE DATE(l.created_at) = CURRENT_DATE
       GROUP BY l.city
@@ -183,7 +183,7 @@ class AnalyticsService {
     const result = await pool.query(`
       SELECT 
         'lead' as type,
-        l.client_id as id,
+        l.lead_id as id,
         l.client_name as title,
         l.city as subtitle,
         l.service_type as details,
@@ -195,14 +195,14 @@ class AnalyticsService {
       
       SELECT 
         'unlock' as type,
-        CONCAT(u.client_id, '-', u.provider_id) as id,
+        CONCAT(u.lead_id, '-', u.provider_id) as id,
         p.name as title,
         u.status as subtitle,
         l.service_type as details,
         u.created_at as timestamp
       FROM unlocks u
       JOIN providers p ON u.provider_id = p.id
-      JOIN leads l ON u.client_id = l.client_id
+      JOIN leads l ON u.lead_id = l.lead_id
       WHERE u.created_at >= CURRENT_DATE - INTERVAL '7 days'
       
       ORDER BY timestamp DESC
@@ -301,7 +301,7 @@ class AnalyticsService {
     const result = await pool.query(`
       WITH client_timeline AS (
         SELECT 
-          l.client_id,
+          l.lead_id,
           l.city,
           l.created_at as client_created_time,
           MIN(u.teaser_sent_at) as provider_notified_time,
@@ -310,10 +310,10 @@ class AnalyticsService {
           MIN(f.replied_at) as client_replied_time,
           MIN(CASE WHEN f.response = 'YES_REPLIED' THEN f.replied_at END) as booking_confirmed_time
         FROM leads l
-        LEFT JOIN unlocks u ON l.client_id = u.client_id
-        LEFT JOIN follow_ups f ON l.client_id = f.client_id
+        LEFT JOIN unlocks u ON l.lead_id = u.lead_id
+        LEFT JOIN follow_ups f ON l.lead_id = f.lead_id
         WHERE l.created_at >= CURRENT_DATE - INTERVAL '7 days'
-        GROUP BY l.client_id, l.city, l.created_at
+        GROUP BY l.lead_id, l.city, l.created_at
       )
       SELECT 
         COUNT(*) as total_leads,
@@ -364,7 +364,7 @@ class AnalyticsService {
     const result = await pool.query(`
       WITH client_timeline AS (
         SELECT 
-          l.client_id,
+          l.lead_id,
           l.city,
           l.created_at as client_created_time,
           MIN(u.teaser_sent_at) as provider_notified_time,
@@ -375,14 +375,14 @@ class AnalyticsService {
           p.name as provider_name,
           p.phone as provider_phone
         FROM leads l
-        LEFT JOIN unlocks u ON l.client_id = u.client_id
-        LEFT JOIN follow_ups f ON l.client_id = f.client_id
+        LEFT JOIN unlocks u ON l.lead_id = u.lead_id
+        LEFT JOIN follow_ups f ON l.lead_id = f.lead_id
         LEFT JOIN providers p ON u.provider_id = p.id
         WHERE l.created_at >= CURRENT_DATE - INTERVAL '${days} days'
-        GROUP BY l.client_id, l.city, l.created_at, p.name, p.phone
+        GROUP BY l.lead_id, l.city, l.created_at, p.name, p.phone
       )
       SELECT 
-        client_id,
+        lead_id,
         city,
         client_created_time,
         provider_notified_time,
