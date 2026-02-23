@@ -514,7 +514,7 @@
             
             const html = sortedData.map(client => `
                 <tr>
-                    <td>${client.lead_id.substring(0, 8)}...</td>
+                    <td>${client.client_id.substring(0, 8)}...</td>
                     <td>${client.city}</td>
                     <td>${formatDate(client.provider_notified_time)}</td>
                     <td>${formatDate(client.unlock_time)}</td>

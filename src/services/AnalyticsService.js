@@ -26,19 +26,19 @@ class AnalyticsService {
     const result = await pool.query(`
       SELECT 
         l.city,
-        COUNT(DISTINCT l.lead_id) as leads_today,
-        COUNT(DISTINCT u.lead_id) as unlocks_today,
-        COUNT(DISTINCT u.lead_id) as paid_today,
+        COUNT(DISTINCT l.client_id) as leads_today,
+        COUNT(DISTINCT u.client_id) as unlocks_today,
+        COUNT(DISTINCT u.client_id) as paid_today,
         ROUND(
-          COUNT(DISTINCT u.lead_id) * 100.0 / 
-          NULLIF(COUNT(DISTINCT l.lead_id), 0), 2
+          COUNT(DISTINCT u.client_id) * 100.0 / 
+          NULLIF(COUNT(DISTINCT l.client_id), 0), 2
         ) as unlock_rate_percent,
         ROUND(
-          COUNT(DISTINCT CASE WHEN u.status = 'REVEALED' THEN u.lead_id END) * 100.0 / 
-          NULLIF(COUNT(DISTINCT l.lead_id), 0), 2
+          COUNT(DISTINCT CASE WHEN u.status = 'REVEALED' THEN u.client_id END) * 100.0 / 
+          NULLIF(COUNT(DISTINCT l.client_id), 0), 2
         ) as paid_rate_percent
       FROM leads l
-      LEFT JOIN unlocks u ON l.lead_id = u.lead_id 
+      LEFT JOIN unlocks u ON l.client_id = u.client_id 
         AND DATE(u.created_at) = CURRENT_DATE
       WHERE DATE(l.created_at) = CURRENT_DATE
       GROUP BY l.city
@@ -183,26 +183,26 @@ class AnalyticsService {
     const result = await pool.query(`
       SELECT 
         'lead' as type,
-        lead_id as id,
-        client_name as title,
-        city as subtitle,
-        service_type as details,
-        created_at as timestamp
-      FROM leads 
-      WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+        l.client_id as id,
+        l.client_name as title,
+        l.city as subtitle,
+        l.service_type as details,
+        l.created_at as timestamp
+      FROM leads l
+      WHERE l.created_at >= CURRENT_DATE - INTERVAL '7 days'
       
       UNION ALL
       
       SELECT 
         'unlock' as type,
-        CONCAT(lead_id, '-', provider_id) as id,
+        CONCAT(u.client_id, '-', u.provider_id) as id,
         p.name as title,
         u.status as subtitle,
         l.service_type as details,
         u.created_at as timestamp
       FROM unlocks u
       JOIN providers p ON u.provider_id = p.id
-      JOIN leads l ON u.lead_id = l.lead_id
+      JOIN leads l ON u.client_id = l.client_id
       WHERE u.created_at >= CURRENT_DATE - INTERVAL '7 days'
       
       ORDER BY timestamp DESC
@@ -223,7 +223,7 @@ class AnalyticsService {
       pool.query(`
         SELECT COUNT(DISTINCT u.provider_id) as count 
         FROM unlocks u 
-        JOIN providers p ON u.provider_id = p.provider_id 
+        JOIN providers p ON u.provider_id = p.id 
         WHERE DATE(u.paid_at) = CURRENT_DATE 
         AND p.first_lead_used = false
       `),
@@ -285,7 +285,7 @@ class AnalyticsService {
         p.name as provider_name,
         p.phone as provider_phone
       FROM unlocks u
-      JOIN providers p ON u.provider_id = p.provider_id
+      JOIN providers p ON u.provider_id = p.id
       WHERE u.paid_at >= CURRENT_DATE - INTERVAL '${days} days'
       AND p.first_lead_used = false
       GROUP BY DATE(u.paid_at), p.provider_id, p.name, p.phone
@@ -301,7 +301,7 @@ class AnalyticsService {
     const result = await pool.query(`
       WITH client_timeline AS (
         SELECT 
-          l.lead_id,
+          l.client_id,
           l.city,
           l.created_at as client_created_time,
           MIN(u.teaser_sent_at) as provider_notified_time,
@@ -310,10 +310,10 @@ class AnalyticsService {
           MIN(f.replied_at) as client_replied_time,
           MIN(CASE WHEN f.response = 'YES_REPLIED' THEN f.replied_at END) as booking_confirmed_time
         FROM leads l
-        LEFT JOIN unlocks u ON l.lead_id = u.lead_id
-        LEFT JOIN follow_ups f ON l.lead_id = f.lead_id
+        LEFT JOIN unlocks u ON l.client_id = u.client_id
+        LEFT JOIN follow_ups f ON l.client_id = f.client_id
         WHERE l.created_at >= CURRENT_DATE - INTERVAL '7 days'
-        GROUP BY l.lead_id, l.city, l.created_at
+        GROUP BY l.client_id, l.city, l.created_at
       )
       SELECT 
         COUNT(*) as total_leads,
@@ -364,7 +364,7 @@ class AnalyticsService {
     const result = await pool.query(`
       WITH client_timeline AS (
         SELECT 
-          l.lead_id,
+          l.client_id,
           l.city,
           l.created_at as client_created_time,
           MIN(u.teaser_sent_at) as provider_notified_time,
@@ -375,14 +375,14 @@ class AnalyticsService {
           p.name as provider_name,
           p.phone as provider_phone
         FROM leads l
-        LEFT JOIN unlocks u ON l.lead_id = u.lead_id
-        LEFT JOIN follow_ups f ON l.lead_id = f.lead_id
-        LEFT JOIN providers p ON u.provider_id = p.provider_id
+        LEFT JOIN unlocks u ON l.client_id = u.client_id
+        LEFT JOIN follow_ups f ON l.client_id = f.client_id
+        LEFT JOIN providers p ON u.provider_id = p.id
         WHERE l.created_at >= CURRENT_DATE - INTERVAL '${days} days'
-        GROUP BY l.lead_id, l.city, l.created_at, p.name, p.phone
+        GROUP BY l.client_id, l.city, l.created_at, p.name, p.phone
       )
       SELECT 
-        lead_id,
+        client_id,
         city,
         client_created_time,
         provider_notified_time,
