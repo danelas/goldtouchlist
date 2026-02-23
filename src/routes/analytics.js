@@ -344,4 +344,93 @@ router.get('/dashboard/activity', async (req, res) => {
   }
 });
 
+// Provider contact follow-up stats
+router.get('/dashboard/provider-contacts', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const stats = await AnalyticsService.getProviderContactStats(days);
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error getting provider contact stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get provider contact stats'
+    });
+  }
+});
+
+// First-time free provider stats
+router.get('/dashboard/first-time-free', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const stats = await AnalyticsService.getFirstTimeFreeStats(days);
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error getting first-time free stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get first-time free stats'
+    });
+  }
+});
+
+// Client funnel metrics for the week
+router.get('/dashboard/client-funnel', async (req, res) => {
+  try {
+    const funnel = await AnalyticsService.getClientFunnelWeek();
+    res.json({
+      success: true,
+      data: funnel
+    });
+  } catch (error) {
+    console.error('Error getting client funnel:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get client funnel'
+    });
+  }
+});
+
+// Client timeline table
+router.get('/dashboard/client-timeline', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    const timeline = await AnalyticsService.getClientTimelineTable(days);
+    res.json({
+      success: true,
+      data: timeline
+    });
+  } catch (error) {
+    console.error('Error getting client timeline:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get client timeline'
+    });
+  }
+});
+
+// Unlock time distribution
+router.get('/dashboard/unlock-distribution', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    const distribution = await AnalyticsService.getUnlockTimeDistribution(days);
+    res.json({
+      success: true,
+      data: distribution
+    });
+  } catch (error) {
+    console.error('Error getting unlock distribution:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get unlock distribution'
+    });
+  }
+});
+
 module.exports = router;

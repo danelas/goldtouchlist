@@ -134,16 +134,11 @@ class SMSService {
 
     const priceText = PricingService.formatPriceFromCents(priceCents);
 
-    return `📋 GOLD TOUCH LIST CLIENT REQUEST AVAILABLE
-Service: ${leadData.service_type}
-Location: ${leadData.city}
-When: ${timeWindow}
-Session: ${leadData.session_length || leadData.length || 'Not specified'}
-${contactInfo ? contactInfo + '\n' : ''}
-💰 Unlock full contact details for ${priceText}
-Reply Y to proceed, N to pass
-
-Gold Touch List provides advertising access to client inquiries. We do not arrange or guarantee appointments.`;
+    return `New request ${leadData.city} ${timeWindow}
+${leadData.service_type}
+${leadData.session_length || leadData.length || '60-min'} priority access
+$${(priceCents / 100).toFixed(0)} unlock
+Reply Y`;
   }
 
   formatRevealMessage(privateDetails, publicDetails, leadId) {

@@ -39,7 +39,25 @@ router.get('/success', async (req, res) => {
           const provider = await Provider.findById(provider_id);
           
           if (leadDetails && provider) {
+            // Send client notification that provider is reviewing
+            try {
+              const clientMessage = `A local provider is reviewing your request for ${publicDetails.preferred_time_window || 'your appointment'}. You may receive contact shortly.`;
+              await SMSService.sendSMS(leadDetails.client_phone, clientMessage);
+              console.log(`📱 [Fallback] Sent client notification: ${leadDetails.client_phone}`);
+            } catch (smsError) {
+              console.error('[Fallback] Error sending client notification SMS:', smsError);
+            }
+            
             await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, lead_id);
+            
+            // Send provider notification about client contact
+            try {
+              const providerMessage = "Client notified. For best results, text within 5 minutes.";
+              await SMSService.sendSMS(provider.phone, providerMessage);
+              console.log(`📱 [Fallback] Sent provider notification: ${provider.phone}`);
+            } catch (smsError) {
+              console.error('[Fallback] Error sending provider notification SMS:', smsError);
+            }
             
             try {
               await EmailService.sendUnlockedDetailsEmail({

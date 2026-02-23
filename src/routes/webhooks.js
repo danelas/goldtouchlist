@@ -139,6 +139,22 @@ router.post('/sms/incoming', express.json(), async (req, res) => {
       });
     }
 
+    // Check if this is a provider contact follow-up response (1 or 2)
+    const ProviderContactFollowUpService = require('../services/ProviderContactFollowUpService');
+    const contactFollowUpResult = await ProviderContactFollowUpService.handleProviderResponse(from, text);
+    
+    if (contactFollowUpResult.handled) {
+      console.log('📞 SMS handled as provider contact follow-up:', contactFollowUpResult.action);
+      return res.json({
+        success: true,
+        action: contactFollowUpResult.action,
+        response: contactFollowUpResult.response,
+        leadId: contactFollowUpResult.leadId,
+        providerId: contactFollowUpResult.providerId,
+        message_id: messageId
+      });
+    }
+
     // Not a follow-up reply — process as provider response
     const result = await LeadProcessor.handleProviderResponse(from, text);
     

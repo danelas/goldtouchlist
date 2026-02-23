@@ -198,6 +198,11 @@ app.get('/record-message', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/record-message.html'));
 });
 
+// New client funnel dashboard
+app.get('/funnel', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/dashboard-new.html'));
+});
+
 // Form page for providers
 app.get('/form/:slug', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'form.html'));
@@ -320,21 +325,26 @@ app.listen(PORT, () => {
 
         const addManualMessagesTable = require('./migrations/add_manual_messages_table');
         await addManualMessagesTable.up();
+        
+        // Run provider_contact_followups table migration
+        const addProviderContactFollowUpsTable = require('./migrations/add_provider_contact_followups_table');
+        await addProviderContactFollowUpsTable.up();
       } catch (migrationError) {
         console.error('Migration error:', migrationError);
       }
 
       // Start follow-up SMS scheduler (checks every 60 seconds)
       const FollowUpService = require('./services/FollowUpService');
+      const ProviderContactFollowUpService = require('./services/ProviderContactFollowUpService');
       setInterval(async () => {
         try {
           await FollowUpService.processScheduledFollowUps();
           await FollowUpService.processProviderReminders();
-          await FollowUpService.expireStaleFollowUps();
-        } catch (err) {
-          console.error('Follow-up scheduler error:', err.message);
+          await ProviderContactFollowUpService.processScheduledFollowUps();
+        } catch (error) {
+          console.error('Error in follow-up scheduler:', error);
         }
-      }, 60 * 1000);
+      }, 60000);
       console.log('📞 Follow-up SMS scheduler started (60s interval)');
     }
   });

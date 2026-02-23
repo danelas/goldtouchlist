@@ -253,6 +253,30 @@
             <div class="loading">Loading summary...</div>
         </div>
 
+        <!-- Provider Contact Tracking -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2>Provider Contact Follow-ups (Last 30 Days)</h2>
+                <canvas id="providerContactChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2>First-Time Free Providers</h2>
+                <div id="firstTimeFreeLoading" class="loading">Loading data...</div>
+                <table class="data-table" id="firstTimeFreeTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Provider</th>
+                            <th>Phone</th>
+                            <th>Unlocks</th>
+                            <th>Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody id="firstTimeFreeBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Charts -->
         <div class="charts-grid">
             <div class="chart-card">
@@ -424,14 +448,24 @@
         function renderSummary(summary) {
             const html = `
                 <div class="summary-card">
-                    <h3>Customers Today</h3>
+                    <h3>Leads Today</h3>
                     <div class="value">${summary.leadsToday}</div>
-                    <div class="change positive">New customers today</div>
+                    <div class="change positive">New leads today</div>
                 </div>
                 <div class="summary-card">
-                    <h3>Unlocks Today</h3>
-                    <div class="value">${summary.unlocksToday}</div>
-                    <div class="change positive">Provider unlocks today</div>
+                    <h3>Paid Unlocks Today</h3>
+                    <div class="value">${summary.paidUnlocksToday}</div>
+                    <div class="change positive">Providers who paid today</div>
+                </div>
+                <div class="summary-card">
+                    <h3>First-Time Free Today</h3>
+                    <div class="value">${summary.firstTimeFreeToday}</div>
+                    <div class="change positive">New providers using free lead</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Provider Contacts Today</h3>
+                    <div class="value">${summary.providerContactsToday}</div>
+                    <div class="change positive">Providers who contacted clients</div>
                 </div>
                 <div class="summary-card">
                     <h3>Revenue Today</h3>
@@ -565,7 +599,101 @@
             document.getElementById('activityList').innerHTML = html;
         }
 
+        function renderProviderContactChart(data) {
+            const ctx = document.getElementById('providerContactChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => new Date(d.date).toLocaleDateString()),
+                    datasets: [
+                        {
+                            label: 'Follow-ups Sent',
+                            data: data.map(d => d.followups_sent),
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#3b82f6',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Contacts Made',
+                            data: data.map(d => d.contacts_made),
+                            borderColor: '#10b981',
+                            backgroundColor: '#10b981',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Response Rate %',
+                            data: data.map(d => d.response_rate_percent),
+                            borderColor: '#f59e0b',
+                            backgroundColor: '#f59e0b',
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            position: 'left'
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderFirstTimeFreeTable(data) {
+            const html = data.slice(0, 10).map(item => `
+                <tr>
+                    <td>${new Date(item.date).toLocaleDateString()}</td>
+                    <td>${item.provider_name}</td>
+                    <td>${item.provider_phone}</td>
+                    <td>${item.first_time_unlocks}</td>
+                    <td>$${(item.revenue_cents / 100).toFixed(2)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('firstTimeFreeLoading').style.display = 'none';
+            document.getElementById('firstTimeFreeTable').style.display = 'table';
+            document.getElementById('firstTimeFreeBody').innerHTML = html;
+        }
+
         // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchSummary();
+            fetchDailyLeads();
+            fetchFunnel();
+            fetchCityStats();
+            fetchProviderResponses();
+            fetchActivity();
+            fetchProviderContacts();
+            fetchFirstTimeFree();
+            
+            // Auto-refresh every 5 minutes
+            setInterval(() => {
+                fetchSummary();
+                fetchDailyLeads();
+                fetchFunnel();
+                fetchCityStats();
+                fetchProviderResponses();
+                fetchActivity();
+                fetchProviderContacts();
+                fetchFirstTimeFree();
+            }, 300000);
+        });
+
+        // Auto-refresh every 5 minutes
+        setInterval(initDashboard, 5 * 60 * 1000);
+
+        // Load on page load
         async function initDashboard() {
             await Promise.all([
                 fetchSummary(),
@@ -573,15 +701,11 @@
                 fetchFunnel(),
                 fetchCityStats(),
                 fetchProviderResponses(),
-                fetchActivity()
+                fetchActivity(),
+                fetchProviderContacts(),
+                fetchFirstTimeFree()
             ]);
         }
-
-        // Auto-refresh every 5 minutes
-        setInterval(initDashboard, 5 * 60 * 1000);
-
-        // Load on page load
-        initDashboard();
     </script>
 </body>
 </html>

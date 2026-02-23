@@ -547,8 +547,26 @@ class WebhookController {
       const provider = await Provider.findById(providerId);
 
       if (leadDetails && provider) {
+        // Send client notification that provider is reviewing
+        try {
+          const clientMessage = `A local provider is reviewing your request for ${publicDetails.preferred_time_window || 'your appointment'}. You may receive contact shortly.`;
+          await SMSService.sendSMS(leadDetails.client_phone, clientMessage);
+          console.log(`📱 Sent client notification: ${leadDetails.client_phone}`);
+        } catch (smsError) {
+          console.error('Error sending client notification SMS:', smsError);
+        }
+
         // Send reveal SMS
         await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, leadId);
+        
+        // Send provider notification about client contact
+        try {
+          const providerMessage = "Client notified. For best results, text within 5 minutes.";
+          await SMSService.sendSMS(provider.phone, providerMessage);
+          console.log(`📱 Sent provider notification: ${provider.phone}`);
+        } catch (smsError) {
+          console.error('Error sending provider notification SMS:', smsError);
+        }
 
         try {
           await EmailService.sendUnlockedDetailsEmail({
@@ -578,6 +596,14 @@ class WebhookController {
           });
         } catch (fuErr) {
           console.error('Error scheduling follow-up (reveal still succeeded):', fuErr.message);
+        }
+
+        // Schedule provider contact follow-up (10 min after unlock)
+        try {
+          const ProviderContactFollowUpService = require('../services/ProviderContactFollowUpService');
+          await ProviderContactFollowUpService.scheduleFollowUp(leadId, providerId, provider.phone, leadDetails.client_name);
+        } catch (pcfErr) {
+          console.error('Error scheduling provider contact follow-up (reveal still succeeded):', pcfErr.message);
         }
 
         console.log(`Successfully revealed lead details to provider ${providerId}`);

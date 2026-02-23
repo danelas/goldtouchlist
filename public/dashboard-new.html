@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Gold Touch List</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Top Section - High Level KPIs */
+        .kpi-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .kpi-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 1.5rem;
+        }
+
+        .funnel-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .funnel-main {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .funnel-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .funnel-step {
+            text-align: center;
+        }
+
+        .funnel-step-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .funnel-step-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .kpi-card {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .kpi-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .kpi-highlight {
+            color: #10b981;
+            font-size: 1.75rem;
+        }
+
+        /* Middle Section - Client Table */
+        .table-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .table-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 1.5rem;
+        }
+
+        .table-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .sort-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .sort-btn:hover {
+            background: #f8fafc;
+        }
+
+        .sort-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .client-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .client-table th,
+        .client-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .client-table th {
+            font-weight: 600;
+            color: #475569;
+            background: #f8fafc;
+        }
+
+        .client-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-complete {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-missing {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        /* Bottom Section - Time Distribution */
+        .distribution-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .distribution-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 1.5rem;
+        }
+
+        .time-buckets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .time-bucket {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .time-bucket-title {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .time-bucket-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.25rem;
+        }
+
+        .time-bucket-percent {
+            font-size: 0.875rem;
+            color: #10b981;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .funnel-steps {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-controls {
+                flex-direction: column;
+            }
+
+            .client-table {
+                font-size: 0.75rem;
+            }
+
+            .time-buckets {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Client Funnel Analytics</h1>
+    </div>
+
+    <div class="container">
+        <!-- Top Section - High Level KPIs -->
+        <div class="kpi-section">
+            <h2>This Week</h2>
+            
+            <div id="funnelLoading" class="loading">Loading funnel data...</div>
+            <div id="funnelDisplay" style="display: none;">
+                <div class="funnel-display">
+                    <div class="funnel-main" id="funnelMainText">Leads This Week: 0</div>
+                    <div class="funnel-steps" id="funnelSteps">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Unlock Rate</div>
+                        <div class="kpi-value" id="unlockRate">0%</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Avg Time to Unlock</div>
+                        <div class="kpi-value" id="avgTimeToUnlock">0 min</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label kpi-highlight">Avg Time to Phone View</div>
+                        <div class="kpi-value kpi-highlight" id="avgTimeToPhoneView">0 min</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Client Response Rate</div>
+                        <div class="kpi-value" id="clientResponseRate">0%</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Booking Rate</div>
+                        <div class="kpi-value" id="bookingRate">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Section - Client Table -->
+        <div class="table-section">
+            <h2>Per Client Timeline</h2>
+            
+            <div class="table-controls">
+                <button class="sort-btn active" data-sort="delay">Longest Delay</button>
+                <button class="sort-btn" data-sort="no-response">No Response</button>
+                <button class="sort-btn" data-sort="performers">High Performers</button>
+            </div>
+
+            <div id="tableLoading" class="loading">Loading client data...</div>
+            <div id="clientTableContainer" style="display: none;">
+                <table class="client-table">
+                    <thead>
+                        <tr>
+                            <th>Client ID</th>
+                            <th>City</th>
+                            <th>Sent</th>
+                            <th>Unlock</th>
+                            <th>Phone View</th>
+                            <th>Client Reply</th>
+                            <th>Booked</th>
+                            <th>Time to Unlock</th>
+                            <th>Time to Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientTableBody">
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Bottom Section - Time Distribution -->
+        <div class="distribution-section">
+            <h2>Unlock Speed Distribution</h2>
+            
+            <div id="distributionLoading" class="loading">Loading distribution data...</div>
+            <div id="timeBuckets" style="display: none;">
+                <div class="time-buckets">
+                    <div class="time-bucket">
+                        <div class="time-bucket-title">0–5 min</div>
+                        <div class="time-bucket-value" id="within5Min">0</div>
+                        <div class="time-bucket-percent" id="within5MinPercent">0%</div>
+                    </div>
+                    <div class="time-bucket">
+                        <div class="time-bucket-title">5–15 min</div>
+                        <div class="time-bucket-value" id="within15Min">0</div>
+                        <div class="time-bucket-percent" id="within15MinPercent">0%</div>
+                    </div>
+                    <div class="time-bucket">
+                        <div class="time-bucket-title">15–60 min</div>
+                        <div class="time-bucket-value" id="within60Min">0</div>
+                        <div class="time-bucket-percent" id="within60MinPercent">0%</div>
+                    </div>
+                    <div class="time-bucket">
+                        <div class="time-bucket-title">Over 1 hour</div>
+                        <div class="time-bucket-value" id="over1Hour">0</div>
+                        <div class="time-bucket-percent" id="over1HourPercent">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSort = 'delay';
+        let allClientData = [];
+
+        // Format time in minutes
+        function formatTime(minutes) {
+            if (minutes === null || minutes === undefined) return '-';
+            if (minutes < 1) return '<1 min';
+            if (minutes < 60) return `${Math.round(minutes)} min`;
+            return `${Math.round(minutes / 60)}h ${Math.round(minutes % 60)}m`;
+        }
+
+        // Format date
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString();
+        }
+
+        // Get status badge
+        function getStatusBadge(hasValue) {
+            if (hasValue) {
+                return '<span class="status-badge status-complete">✓</span>';
+            } else {
+                return '<span class="status-badge status-missing">-</span>';
+            }
+        }
+
+        // Fetch funnel data
+        async function fetchFunnelData() {
+            try {
+                const response = await fetch('/analytics/dashboard/client-funnel');
+                const data = await response.json();
+                if (data.success) {
+                    renderFunnel(data.data);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('funnelLoading').innerHTML = 
+                    `<div class="error">Error loading funnel: ${error.message}</div>`;
+            }
+        }
+
+        // Render funnel
+        function renderFunnel(data) {
+            document.getElementById('funnelLoading').style.display = 'none';
+            document.getElementById('funnelDisplay').style.display = 'block';
+
+            document.getElementById('funnelMainText').textContent = 
+                `Leads This Week: ${data.total_leads}`;
+
+            document.getElementById('funnelSteps').innerHTML = `
+                <div class="funnel-step">
+                    <div class="funnel-step-number">${data.sent_to_providers}</div>
+                    <div class="funnel-step-label">Sent to Providers</div>
+                </div>
+                <div class="funnel-step">
+                    <div class="funnel-step-number">${data.unlocked}</div>
+                    <div class="funnel-step-label">Unlocked (${data.unlock_rate_percent}%)</div>
+                </div>
+                <div class="funnel-step">
+                    <div class="funnel-step-number">${data.phone_viewed}</div>
+                    <div class="funnel-step-label">Phone Viewed (${data.phone_view_rate_percent}%)</div>
+                </div>
+                <div class="funnel-step">
+                    <div class="funnel-step-number">${data.client_responded}</div>
+                    <div class="funnel-step-label">Client Responded (${data.client_response_rate_percent}%)</div>
+                </div>
+                <div class="funnel-step">
+                    <div class="funnel-step-number">${data.booked}</div>
+                    <div class="funnel-step-label">Booked (${data.booking_rate_percent}%)</div>
+                </div>
+            `;
+
+            document.getElementById('unlockRate').textContent = `${data.unlock_rate_percent}%`;
+            document.getElementById('avgTimeToUnlock').textContent = formatTime(data.avg_time_to_unlock_minutes);
+            document.getElementById('avgTimeToPhoneView').textContent = formatTime(data.avg_time_to_phone_view_minutes);
+            document.getElementById('clientResponseRate').textContent = `${data.client_response_rate_percent}%`;
+            document.getElementById('bookingRate').textContent = `${data.booking_rate_percent}%`;
+        }
+
+        // Fetch client timeline
+        async function fetchClientTimeline() {
+            try {
+                const response = await fetch('/analytics/dashboard/client-timeline?days=7');
+                const data = await response.json();
+                if (data.success) {
+                    allClientData = data.data;
+                    renderClientTable();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('tableLoading').innerHTML = 
+                    `<div class="error">Error loading client data: ${error.message}</div>`;
+            }
+        }
+
+        // Render client table
+        function renderClientTable() {
+            document.getElementById('tableLoading').style.display = 'none';
+            document.getElementById('clientTableContainer').style.display = 'block';
+
+            const sortedData = sortClientData(allClientData);
+            
+            const html = sortedData.map(client => `
+                <tr>
+                    <td>${client.lead_id.substring(0, 8)}...</td>
+                    <td>${client.city}</td>
+                    <td>${formatDate(client.provider_notified_time)}</td>
+                    <td>${formatDate(client.unlock_time)}</td>
+                    <td>${formatDate(client.phone_viewed_time)}</td>
+                    <td>${formatDate(client.client_replied_time)}</td>
+                    <td>${formatDate(client.booking_confirmed_time)}</td>
+                    <td>${formatTime(client.time_to_unlock_minutes)}</td>
+                    <td>${formatTime(client.time_to_phone_view_minutes)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('clientTableBody').innerHTML = html;
+        }
+
+        // Sort client data
+        function sortClientData(data) {
+            const sorted = [...data];
+            
+            switch(currentSort) {
+                case 'delay':
+                    return sorted.sort((a, b) => {
+                        const aDelay = a.time_to_phone_view_minutes || 999999;
+                        const bDelay = b.time_to_phone_view_minutes || 999999;
+                        return bDelay - aDelay;
+                    });
+                case 'no-response':
+                    return sorted.sort((a, b) => {
+                        const aHasResponse = a.client_replied_time !== null;
+                        const bHasResponse = b.client_replied_time !== null;
+                        if (aHasResponse === bHasResponse) return 0;
+                        return aHasResponse ? 1 : -1;
+                    });
+                case 'performers':
+                    return sorted.sort((a, b) => {
+                        const aTime = a.time_to_phone_view_minutes || 999999;
+                        const bTime = b.time_to_phone_view_minutes || 999999;
+                        return aTime - bTime;
+                    });
+                default:
+                    return sorted;
+            }
+        }
+
+        // Fetch distribution data
+        async function fetchDistribution() {
+            try {
+                const response = await fetch('/analytics/dashboard/unlock-distribution?days=7');
+                const data = await response.json();
+                if (data.success) {
+                    renderDistribution(data.data);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('distributionLoading').innerHTML = 
+                    `<div class="error">Error loading distribution: ${error.message}</div>`;
+            }
+        }
+
+        // Render distribution
+        function renderDistribution(data) {
+            document.getElementById('distributionLoading').style.display = 'none';
+            document.getElementById('timeBuckets').style.display = 'block';
+
+            document.getElementById('within5Min').textContent = data.within_5_min;
+            document.getElementById('within5MinPercent').textContent = `${data.within_5_min_percent}%`;
+            
+            document.getElementById('within15Min').textContent = data.within_15_min;
+            document.getElementById('within15MinPercent').textContent = `${data.within_15_min_percent}%`;
+            
+            document.getElementById('within60Min').textContent = data.within_60_min;
+            document.getElementById('within60MinPercent').textContent = `${data.within_60_min_percent}%`;
+            
+            document.getElementById('over1Hour').textContent = data.over_1_hour;
+            document.getElementById('over1HourPercent').textContent = `${data.over_1_hour_percent}%`;
+        }
+
+        // Sort button handlers
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentSort = this.dataset.sort;
+                renderClientTable();
+            });
+        });
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchFunnelData();
+            fetchClientTimeline();
+            fetchDistribution();
+            
+            // Auto-refresh every 5 minutes
+            setInterval(() => {
+                fetchFunnelData();
+                fetchClientTimeline();
+                fetchDistribution();
+            }, 300000);
+        });
+    </script>
+</body>
+</html>
