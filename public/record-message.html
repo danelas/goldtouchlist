@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Manual Message - Gold Touch List</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .quick-templates {
+            margin-bottom: 20px;
+        }
+        
+        .template-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .template-btn:hover {
+            background: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Record Manual Message</h1>
+        <p class="subtitle">Record outbound messages so AI can respond intelligently to replies</p>
+        
+        <div class="quick-templates">
+            <label>Quick Templates:</label>
+            <button class="template-btn" onclick="useTemplate('followup')">
+                Client Follow-up
+            </button>
+            <button class="template-btn" onclick="useTemplate('outreach')">
+                Provider Outreach
+            </button>
+        </div>
+        
+        <form id="messageForm">
+            <div class="form-group">
+                <label for="phone">Phone Number *</label>
+                <input type="tel" id="phone" name="phone" required 
+                       placeholder="+1234567890" 
+                       pattern="[+][0-9]{10,15}">
+            </div>
+            
+            <div class="form-group">
+                <label for="message">Message *</label>
+                <textarea id="message" name="message" required 
+                          placeholder="Enter the exact message you sent..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="context">Context (optional)</label>
+                <select id="context" name="context">
+                    <option value="">Select context...</option>
+                    <option value="Client follow-up about provider contact">Client Follow-up</option>
+                    <option value="Provider outreach for expansion">Provider Outreach</option>
+                    <option value="General inquiry response">General Response</option>
+                    <option value="custom">Custom...</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="customContextGroup" style="display: none;">
+                <label for="customContext">Custom Context</label>
+                <input type="text" id="customContext" name="customContext" 
+                       placeholder="Describe the context...">
+            </div>
+            
+            <button type="submit" class="btn">Record Message</button>
+        </form>
+        
+        <div id="success" class="success">
+            ✅ Message recorded successfully! The system will now recognize replies to this message.
+        </div>
+        
+        <div id="error" class="error">
+            ❌ Error recording message. Please try again.
+        </div>
+    </div>
+    
+    <script>
+        const templates = {
+            followup: {
+                message: "Hi [Name], did your requested provider reach out?",
+                context: "Client follow-up about provider contact"
+            },
+            outreach: {
+                message: "Hi, we're expanding Gold Touch List in your area and sending traffic to select providers. Are you open to receiving additional local clients this month?",
+                context: "Provider outreach for expansion"
+            }
+        };
+        
+        function useTemplate(type) {
+            const template = templates[type];
+            document.getElementById('message').value = template.message;
+            document.getElementById('context').value = template.context;
+        }
+        
+        document.getElementById('context').addEventListener('change', function() {
+            const customGroup = document.getElementById('customContextGroup');
+            if (this.value === 'custom') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('messageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const btn = document.querySelector('.btn');
+            btn.disabled = true;
+            btn.textContent = 'Recording...';
+            
+            const phone = document.getElementById('phone').value;
+            const message = document.getElementById('message').value;
+            let context = document.getElementById('context').value;
+            
+            if (context === 'custom') {
+                context = document.getElementById('customContext').value;
+            }
+            
+            try {
+                const response = await fetch('/webhooks/manual-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        message: message,
+                        aiContext: context
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('success').style.display = 'block';
+                    document.getElementById('error').style.display = 'none';
+                    
+                    // Reset form
+                    this.reset();
+                    
+                    // Hide success after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('success').style.display = 'none';
+                    }, 3000);
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = '❌ ' + error.message;
+                document.getElementById('success').style.display = 'none';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Record Message';
+            }
+        });
+    </script>
+</body>
+</html>

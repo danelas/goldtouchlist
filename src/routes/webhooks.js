@@ -902,4 +902,60 @@ router.post('/manual-message', express.json(), async (req, res) => {
   }
 });
 
+// TextMagic outbound message webhook (to automatically record sent messages)
+router.post('/textmagic/outbound', express.json(), async (req, res) => {
+  try {
+    console.log('📤 TextMagic outbound webhook received:', JSON.stringify(req.body, null, 2));
+    
+    // Extract message data from TextMagic webhook
+    const body = req.body;
+    
+    // TextMagic outbound webhook fields
+    const to = body.to || body.recipient || body.phone || body.To || body.Recipient;
+    const text = body.text || body.message || body.body || body.content || body.Text || body.Message;
+    const messageId = body.message_id || body.id || body.msgId || body.messageId;
+    const status = body.status || body.State || body.state;
+    
+    if (!to || !text) {
+      console.log('Missing required fields in outbound webhook');
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // Only record successfully sent messages
+    if (status && status.toLowerCase() !== 'sent' && status.toLowerCase() !== 'delivered') {
+      console.log(`Message not sent/delivered, status: ${status}`);
+      return res.json({ success: true, skipped: true, reason: 'Message not sent/delivered' });
+    }
+    
+    // Auto-detect context based on message content
+    let aiContext = 'Manual outbound message';
+    if (text.toLowerCase().includes('reach out') || text.toLowerCase().includes('did')) {
+      aiContext = 'Client follow-up about provider contact';
+    } else if (text.toLowerCase().includes('expanding') || text.toLowerCase().includes('providers')) {
+      aiContext = 'Provider outreach for expansion';
+    } else if (text.toLowerCase().includes('subscription') || text.toLowerCase().includes('cost')) {
+      aiContext = 'Pricing inquiry response';
+    }
+    
+    // Record the outbound message
+    const ManualMessageService = require('../services/ManualMessageService');
+    const result = await ManualMessageService.recordOutboundMessage(to, text, aiContext);
+    
+    console.log(`✅ Auto-recorded outbound message to ${to}: ${text.substring(0, 50)}...`);
+    
+    res.json({
+      success: true,
+      messageId: result.id,
+      autoDetectedContext: aiContext
+    });
+    
+  } catch (error) {
+    console.error('Error processing TextMagic outbound webhook:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

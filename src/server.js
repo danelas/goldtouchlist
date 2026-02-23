@@ -190,7 +190,12 @@ app.get('/admin/providers', (req, res) => {
 
 // Analytics Dashboard
 app.get('/analytics/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html'));
+  res.sendFile(path.join(__dirname, '../public/dashboard.html'));
+});
+
+// Record manual message page route
+app.get('/record-message', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/record-message.html'));
 });
 
 // Form page for providers
