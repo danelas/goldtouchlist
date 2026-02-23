@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const moment = require('moment-timezone');
 const PricingService = require('./PricingService');
 
 class EmailService {
@@ -132,7 +133,63 @@ class EmailService {
     const acceptUrl = `${domain}/unlocks/accept?token=${encodeURIComponent(token)}`;
 
     const priceText = PricingService.formatPriceFromCents(priceCents);
-    const leadSummaryText = `Service: ${leadData.service_type}\nLocation: ${leadData.city}\nWhen: ${leadData.preferred_time_window || 'Flexible'}\nSession: ${leadData.session_length || leadData.length || 'Not specified'}`;
+
+    // Build location similar to SMS (prefer zip when available)
+    const locationStr = (leadData.zip_code && leadData.zip_code.toString().trim())
+      || (leadData.city && leadData.city.toString().trim())
+      || (leadData.cityzip && leadData.cityzip.toString().trim())
+      || '';
+
+    // Derive date label and time bucket from fields
+    const rawTimeWindow = leadData['Time Window'] || leadData.preferred_time_window || leadData.date_time;
+    let dateLabel = '';
+    let timeLabel = 'Flexible';
+    if (rawTimeWindow) {
+      const dateValue = typeof rawTimeWindow === 'string' ? rawTimeWindow : rawTimeWindow.toString();
+      let parsedDate;
+      if (dateValue.includes('.')) {
+        parsedDate = moment(dateValue, 'M.D.YYYY');
+      } else if (dateValue.includes('/')) {
+        parsedDate = moment(dateValue, 'M/D/YYYY');
+      } else {
+        parsedDate = moment(rawTimeWindow);
+      }
+      const hasTime = /am|pm|:/i.test(dateValue);
+      if (parsedDate.isValid()) {
+        dateLabel = parsedDate.format('MMM D');
+        if (hasTime) {
+          const hour = parsedDate.hour();
+          if (hour >= 17 && hour < 21) timeLabel = 'Evening (5–9pm)';
+          else if (hour >= 12 && hour < 17) timeLabel = 'Afternoon (12–5pm)';
+          else if (hour >= 8 && hour < 12) timeLabel = 'Morning (8–12pm)';
+          else if (hour >= 21 || hour < 5) timeLabel = 'Night (9pm–5am)';
+          else timeLabel = 'Early Morning (5–8am)';
+        }
+      } else {
+        dateLabel = dateValue;
+      }
+    }
+    // If form provided a friendly Time label, prefer it
+    if (leadData.Time) {
+      const t = leadData.Time.toString().trim();
+      const lower = t.toLowerCase();
+      if (t.includes('(')) timeLabel = t;
+      else if (lower.includes('evening')) timeLabel = 'Evening (5–9pm)';
+      else if (lower.includes('afternoon')) timeLabel = 'Afternoon (12–5pm)';
+      else if (lower.includes('morning')) timeLabel = 'Morning (8–12pm)';
+      else if (lower.includes('night')) timeLabel = 'Night (9pm–5am)';
+      else if (lower.includes('flex') || lower.includes('any')) timeLabel = 'Flexible';
+      else timeLabel = t;
+    }
+
+    const sessionLenRaw = leadData.session_length || leadData.length || '';
+    const sessionLenNum = (sessionLenRaw && sessionLenRaw.toString().match(/\d+/))
+      ? parseInt(sessionLenRaw.toString().match(/\d+/)[0], 10)
+      : null;
+    const sessionLenText = sessionLenNum ? `${sessionLenNum} min` : (sessionLenRaw || 'Not specified');
+
+    const whenText = dateLabel || 'Flexible';
+    const leadSummaryText = `Location: ${locationStr}\nService: ${leadData.service_type}\nWhen: ${whenText}\nTime: ${timeLabel}\nSession: ${sessionLenText}`;
 
     const subject = 'New Customer Request — Details Available';
     const html = this.buildAcceptEmailHtml({
@@ -147,7 +204,35 @@ class EmailService {
   }
 
   static buildUnlockedDetailsEmailHtml({ providerName, privateDetails, publicDetails }) {
-    const whenText = publicDetails?.preferred_time_window || 'Flexible';
+    // Derive When (date label) and Time bucket similar to SMS
+    const rawTimeWindow = publicDetails?.['Time Window'] || publicDetails?.preferred_time_window;
+    let whenText = 'Flexible';
+    let timeLabel = 'Flexible';
+    if (rawTimeWindow) {
+      const dateValue = typeof rawTimeWindow === 'string' ? rawTimeWindow : rawTimeWindow.toString();
+      let parsedDate;
+      if (dateValue.includes('.')) {
+        parsedDate = moment(dateValue, 'M.D.YYYY');
+      } else if (dateValue.includes('/')) {
+        parsedDate = moment(dateValue, 'M/D/YYYY');
+      } else {
+        parsedDate = moment(rawTimeWindow);
+      }
+      const hasTime = /am|pm|:/i.test(dateValue);
+      if (parsedDate.isValid()) {
+        whenText = parsedDate.format('MMM D');
+        if (hasTime) {
+          const hour = parsedDate.hour();
+          if (hour >= 17 && hour < 21) timeLabel = 'Evening (5–9pm)';
+          else if (hour >= 12 && hour < 17) timeLabel = 'Afternoon (12–5pm)';
+          else if (hour >= 8 && hour < 12) timeLabel = 'Morning (8–12pm)';
+          else if (hour >= 21 || hour < 5) timeLabel = 'Night (9pm–5am)';
+          else timeLabel = 'Early Morning (5–8am)';
+        }
+      } else {
+        whenText = dateValue;
+      }
+    }
     const addressText = privateDetails.exact_address || [privateDetails.city, publicDetails.zip_code].filter(Boolean).join(', ') || '';
 
     return `<!DOCTYPE html>
@@ -171,7 +256,8 @@ class EmailService {
       <p style="margin:0 0 8px 0;"><strong>Address:</strong> ${addressText}</p>
       <p style="margin:0 0 8px 0;"><strong>Contact Pref:</strong> ${publicDetails.contactpref || 'Not specified'}</p>
       <p style="margin:0 0 8px 0;"><strong>Service:</strong> ${publicDetails.service_type}</p>
-      <p style="margin:0;"><strong>When:</strong> ${whenText}</p>
+      <p style="margin:0 0 8px 0;"><strong>When:</strong> ${whenText}</p>
+      <p style="margin:0;"><strong>Time:</strong> ${timeLabel}</p>
     </div>
 
     <p style="margin:16px 0 0 0; color:#333;">We recommend reaching out as soon as possible to introduce yourself and confirm availability.</p>
@@ -194,7 +280,37 @@ class EmailService {
       publicDetails
     });
 
-    const text = `Hi ${provider.name || ''},\n\nYour purchase is complete, and the customer's full contact details are now available.\n\nHere is the information:\n\nClient: ${privateDetails.client_name}\nPhone: ${privateDetails.client_phone}\nEmail: ${privateDetails.client_email || 'Not provided'}\nAddress: ${addressText}\nContact Pref: ${publicDetails.contactpref || 'Not specified'}\nService: ${publicDetails.service_type}\nWhen: ${publicDetails.preferred_time_window || 'Flexible'}\n\nWe recommend reaching out as soon as possible to introduce yourself and confirm availability.\n\nQuick responses increase the chances of securing the booking.\n\nIf you need any assistance, feel free to reply to this email.\n\nBest,\nGold Touch List Team`;
+    // Build formatted When and Time similar to HTML/SMS
+    const rawTimeWindow = publicDetails?.['Time Window'] || publicDetails?.preferred_time_window;
+    let whenText = 'Flexible';
+    let timeLabel = 'Flexible';
+    if (rawTimeWindow) {
+      const dateValue = typeof rawTimeWindow === 'string' ? rawTimeWindow : rawTimeWindow.toString();
+      let parsedDate;
+      if (dateValue.includes('.')) {
+        parsedDate = moment(dateValue, 'M.D.YYYY');
+      } else if (dateValue.includes('/')) {
+        parsedDate = moment(dateValue, 'M/D/YYYY');
+      } else {
+        parsedDate = moment(rawTimeWindow);
+      }
+      const hasTime = /am|pm|:/i.test(dateValue);
+      if (parsedDate.isValid()) {
+        whenText = parsedDate.format('MMM D');
+        if (hasTime) {
+          const hour = parsedDate.hour();
+          if (hour >= 17 && hour < 21) timeLabel = 'Evening (5–9pm)';
+          else if (hour >= 12 && hour < 17) timeLabel = 'Afternoon (12–5pm)';
+          else if (hour >= 8 && hour < 12) timeLabel = 'Morning (8–12pm)';
+          else if (hour >= 21 || hour < 5) timeLabel = 'Night (9pm–5am)';
+          else timeLabel = 'Early Morning (5–8am)';
+        }
+      } else {
+        whenText = dateValue;
+      }
+    }
+
+    const text = `Hi ${provider.name || ''},\n\nYour purchase is complete, and the customer's full contact details are now available.\n\nHere is the information:\n\nClient: ${privateDetails.client_name}\nPhone: ${privateDetails.client_phone}\nEmail: ${privateDetails.client_email || 'Not provided'}\nAddress: ${addressText}\nContact Pref: ${publicDetails.contactpref || 'Not specified'}\nService: ${publicDetails.service_type}\nWhen: ${whenText}\nTime: ${timeLabel}\n\nWe recommend reaching out as soon as possible to introduce yourself and confirm availability.\n\nQuick responses increase the chances of securing the booking.\n\nIf you need any assistance, feel free to reply to this email.\n\nBest,\nGold Touch List Team`;
 
     return await this.sendMail({ to: provider.email, subject, html, text });
   }
