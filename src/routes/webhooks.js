@@ -958,4 +958,34 @@ router.post('/textmagic/outbound', express.json(), async (req, res) => {
   }
 });
 
+// Test MailerLite endpoint
+router.get('/test-mailerlite', async (req, res) => {
+  const MailerLiteService = require('../services/MailerLiteService');
+  
+  const status = {
+    enabled: MailerLiteService.isEnabled(),
+    apiKeySet: !!process.env.MAILERLITE_API_KEY,
+    groupIdSet: !!process.env.MAILERLITE_GROUP_ID,
+    apiKey: process.env.MAILERLITE_API_KEY ? process.env.MAILERLITE_API_KEY.substring(0, 10) + '...' : null,
+    groupId: process.env.MAILERLITE_GROUP_ID || null
+  };
+  
+  // Test actual API call if enabled
+  if (status.enabled) {
+    try {
+      const testResult = await MailerLiteService.addSubscriber({
+        email: 'test-' + Date.now() + '@example.com',
+        name: 'Test User',
+        phone: '+1234567890',
+        providerId: 'test'
+      });
+      status.apiTest = testResult;
+    } catch (error) {
+      status.apiTest = { error: error.message };
+    }
+  }
+  
+  res.json(status);
+});
+
 module.exports = router;
