@@ -207,21 +207,42 @@ app.get('/funnel', (req, res) => {
 app.get('/run-migration', async (req, res) => {
   try {
     const pool = require('./config/database');
-    
-    await pool.query(`
+
+    // If table already exists, skip
+    const existsResult = await pool.query(`
+      SELECT 1 FROM information_schema.tables 
+      WHERE table_name = 'provider_contact_followups' LIMIT 1
+    `);
+    if (existsResult.rows.length > 0) {
+      return res.json({ success: true, message: 'provider_contact_followups already exists' });
+    }
+
+    // Detect providers primary key column (provider_id vs id)
+    const pkResult = await pool.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'providers' 
+        AND column_name IN ('provider_id', 'id')
+      ORDER BY CASE column_name WHEN 'provider_id' THEN 0 ELSE 1 END
+      LIMIT 1
+    `);
+    const providerPk = pkResult.rows[0]?.column_name || 'provider_id';
+
+    // Create table with detected providers PK
+    const createTableSql = `
       CREATE TABLE IF NOT EXISTS provider_contact_followups (
         id SERIAL PRIMARY KEY,
         lead_id UUID NOT NULL REFERENCES leads(lead_id),
-        provider_id INTEGER NOT NULL REFERENCES providers(provider_id),
+        provider_id INTEGER NOT NULL REFERENCES providers(${providerPk}),
         status VARCHAR(50) DEFAULT 'SCHEDULED',
         sent_at TIMESTAMP,
         responded_at TIMESTAMP,
-        response_value INTEGER, -- 1 for Yes, 2 for Not yet
+        response_value INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(lead_id, provider_id)
       )
-    `);
+    `;
+    await pool.query(createTableSql);
 
     // Create indexes
     await pool.query(`
@@ -267,10 +288,7 @@ app.get('/run-migration', async (req, res) => {
         EXECUTE FUNCTION update_provider_contact_followups_updated_at()
     `);
 
-    res.json({
-      success: true,
-      message: 'Migration completed successfully!'
-    });
+    res.json({ success: true, message: 'Migration completed successfully!' });
   } catch (error) {
     console.error('Migration failed:', error);
     res.status(500).json({
