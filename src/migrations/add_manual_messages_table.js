@@ -30,7 +30,7 @@ async function up() {
       CREATE INDEX IF NOT EXISTS idx_manual_messages_response_received ON manual_messages(response_received_at)
     `);
 
-    // Create trigger for updated_at
+    // Create trigger for updated_at (only if it doesn't exist)
     await pool.query(`
       CREATE OR REPLACE FUNCTION update_manual_messages_updated_at()
       RETURNS TRIGGER AS $$
@@ -41,11 +41,20 @@ async function up() {
       $$ language 'plpgsql'
     `);
 
-    await pool.query(`
-      CREATE TRIGGER update_manual_messages_updated_at 
-        BEFORE UPDATE ON manual_messages 
-        FOR EACH ROW EXECUTE FUNCTION update_manual_messages_updated_at()
+    // Check if trigger already exists before creating
+    const triggerExists = await pool.query(`
+      SELECT 1 FROM pg_trigger 
+      WHERE tgname = 'update_manual_messages_updated_at' 
+      AND tgrelid = 'manual_messages'::regclass
     `);
+
+    if (triggerExists.rows.length === 0) {
+      await pool.query(`
+        CREATE TRIGGER update_manual_messages_updated_at 
+          BEFORE UPDATE ON manual_messages 
+          FOR EACH ROW EXECUTE FUNCTION update_manual_messages_updated_at()
+      `);
+    }
 
     console.log('✅ Manual messages table created successfully');
   } catch (error) {
