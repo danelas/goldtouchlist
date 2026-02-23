@@ -59,6 +59,19 @@ router.get('/providers', async (req, res) => {
   }
 });
 
+// Daily provider signups
+router.get('/dashboard/daily-providers', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const AnalyticsService = require('../services/AnalyticsService');
+    const dailyProviders = await AnalyticsService.getDailyProviders(days);
+    res.json({ success: true, dailyProviders });
+  } catch (error) {
+    console.error('Error getting daily providers:', error);
+    res.status(500).json({ success: false, error: 'Failed to get daily providers' });
+  }
+});
+
 // Recent activity analytics
 router.get('/recent-activity', async (req, res) => {
   try {

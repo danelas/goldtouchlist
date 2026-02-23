@@ -20,6 +20,22 @@ class AnalyticsService {
   }
 
   /**
+   * Get daily provider signups for the last N days
+   */
+  static async getDailyProviders(days = 30) {
+    const result = await pool.query(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as providers_count
+      FROM providers 
+      WHERE created_at >= CURRENT_DATE - INTERVAL '${days} days'
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    `);
+    return result.rows;
+  }
+
+  /**
    * Get city-wise stats: leads today and unlock rates
    */
   static async getCityStats() {

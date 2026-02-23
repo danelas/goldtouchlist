@@ -287,6 +287,10 @@
                 <h2>Conversion Funnel</h2>
                 <canvas id="funnelChart"></canvas>
             </div>
+            <div class="chart-card">
+                <h2>New Providers per Day (Last 30 Days)</h2>
+                <canvas id="dailyProvidersChart"></canvas>
+            </div>
         </div>
 
         <!-- City Stats -->
@@ -396,6 +400,20 @@
                 }
             } catch (error) {
                 console.error('Error loading funnel:', error);
+            }
+        }
+
+        async function fetchDailyProviders() {
+            try {
+                const response = await fetch('/analytics/dashboard/daily-providers?days=30');
+                const data = await response.json();
+                if (data.success) {
+                    renderDailyProvidersChart(data.dailyProviders);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Error loading daily providers:', error);
             }
         }
 
@@ -537,6 +555,30 @@
             });
         }
 
+        function renderDailyProvidersChart(data) {
+            const ctx = document.getElementById('dailyProvidersChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => new Date(d.date).toLocaleDateString()),
+                    datasets: [{
+                        label: 'New Providers',
+                        data: data.map(d => d.providers_count),
+                        borderColor: '#8b5cf6',
+                        backgroundColor: '#ede9fe',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
         function renderCityStats(data) {
             const tbody = document.getElementById('cityStatsBody');
             tbody.innerHTML = data.map(city => `
@@ -671,6 +713,7 @@
             fetchSummary();
             fetchDailyLeads();
             fetchFunnel();
+            fetchDailyProviders();
             fetchCityStats();
             fetchProviderResponses();
             fetchActivity();
@@ -682,6 +725,7 @@
                 fetchSummary();
                 fetchDailyLeads();
                 fetchFunnel();
+                fetchDailyProviders();
                 fetchCityStats();
                 fetchProviderResponses();
                 fetchActivity();
@@ -699,6 +743,7 @@
                 fetchSummary(),
                 fetchDailyLeads(),
                 fetchFunnel(),
+                fetchDailyProviders(),
                 fetchCityStats(),
                 fetchProviderResponses(),
                 fetchActivity(),
