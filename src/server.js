@@ -217,22 +217,36 @@ app.get('/run-migration', async (req, res) => {
       return res.json({ success: true, message: 'provider_contact_followups already exists' });
     }
 
-    // Detect providers primary key column (provider_id vs id)
+    // Detect providers primary key column (provider_id vs id) and its data type
     const pkResult = await pool.query(`
-      SELECT column_name FROM information_schema.columns 
+      SELECT column_name, data_type, character_maximum_length 
+      FROM information_schema.columns 
       WHERE table_name = 'providers' 
         AND column_name IN ('provider_id', 'id')
       ORDER BY CASE column_name WHEN 'provider_id' THEN 0 ELSE 1 END
       LIMIT 1
     `);
     const providerPk = pkResult.rows[0]?.column_name || 'provider_id';
+    const providerPkDataType = pkResult.rows[0]?.data_type || 'integer';
+    const providerPkCharLen = pkResult.rows[0]?.character_maximum_length;
+    let providerColType = 'INTEGER';
+    if (providerPkDataType === 'integer') {
+      providerColType = 'INTEGER';
+    } else if (providerPkDataType === 'uuid') {
+      providerColType = 'UUID';
+    } else if (providerPkDataType === 'character varying') {
+      providerColType = providerPkCharLen ? `VARCHAR(${providerPkCharLen})` : 'VARCHAR';
+    } else {
+      // Fallback to using the raw data_type uppercased
+      providerColType = providerPkDataType.toUpperCase();
+    }
 
     // Create table with detected providers PK
     const createTableSql = `
       CREATE TABLE IF NOT EXISTS provider_contact_followups (
         id SERIAL PRIMARY KEY,
         lead_id UUID NOT NULL REFERENCES leads(lead_id),
-        provider_id INTEGER NOT NULL REFERENCES providers(${providerPk}),
+        provider_id ${providerColType} NOT NULL REFERENCES providers(${providerPk}),
         status VARCHAR(50) DEFAULT 'SCHEDULED',
         sent_at TIMESTAMP,
         responded_at TIMESTAMP,

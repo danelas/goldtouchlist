@@ -3,12 +3,112 @@ const SMSService = require('./SMSService');
 
 class ProviderContactFollowUpService {
   static PROVIDER_FOLLOW_UP_DELAY_MINUTES = 10;
+  static PROVIDERS_PK = null; // Cache detected providers PK column name
+
+  static async getProvidersPk() {
+    if (this.PROVIDERS_PK) return this.PROVIDERS_PK;
+    try {
+      const result = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'providers' AND column_name IN ('provider_id','id')
+        ORDER BY CASE column_name WHEN 'provider_id' THEN 0 ELSE 1 END
+        LIMIT 1
+      `);
+      this.PROVIDERS_PK = result.rows[0]?.column_name || 'provider_id';
+      return this.PROVIDERS_PK;
+    } catch (e) {
+      console.error('Error detecting providers PK, defaulting to provider_id:', e.message);
+      this.PROVIDERS_PK = 'provider_id';
+      return this.PROVIDERS_PK;
+    }
+  }
+
+  static async getProvidersPkType() {
+    try {
+      const result = await pool.query(`
+        SELECT column_name, data_type, character_maximum_length 
+        FROM information_schema.columns 
+        WHERE table_name = 'providers' AND column_name IN ('provider_id','id')
+        ORDER BY CASE column_name WHEN 'provider_id' THEN 0 ELSE 1 END
+        LIMIT 1
+      `);
+      const row = result.rows[0] || {};
+      const dt = row.data_type || 'integer';
+      const len = row.character_maximum_length;
+      if (dt === 'integer') return 'INTEGER';
+      if (dt === 'uuid') return 'UUID';
+      if (dt === 'character varying') return len ? `VARCHAR(${len})` : 'VARCHAR';
+      return dt.toUpperCase();
+    } catch (e) {
+      console.error('Error detecting providers PK type, defaulting to INTEGER:', e.message);
+      return 'INTEGER';
+    }
+  }
+
+  static async ensureTableExists() {
+    try {
+      const exists = await pool.query(`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'provider_contact_followups' LIMIT 1
+      `);
+      if (exists.rows.length > 0) return; // already exists
+
+      const providersPk = await this.getProvidersPk();
+      const providersPkType = await this.getProvidersPkType();
+      const createSql = `
+        CREATE TABLE IF NOT EXISTS provider_contact_followups (
+          id SERIAL PRIMARY KEY,
+          lead_id UUID NOT NULL REFERENCES leads(lead_id),
+          provider_id ${providersPkType} NOT NULL REFERENCES providers(${providersPk}),
+          status VARCHAR(50) DEFAULT 'SCHEDULED',
+          sent_at TIMESTAMP,
+          responded_at TIMESTAMP,
+          response_value INTEGER,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(lead_id, provider_id)
+        )
+      `;
+      await pool.query(createSql);
+
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_provider_contact_followups_lead_id ON provider_contact_followups(lead_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_provider_contact_followups_provider_id ON provider_contact_followups(provider_id)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_provider_contact_followups_status ON provider_contact_followups(status)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_provider_contact_followups_sent_at ON provider_contact_followups(sent_at)`);
+
+      await pool.query(`
+        CREATE OR REPLACE FUNCTION update_provider_contact_followups_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+        END;
+        $$ language 'plpgsql'
+      `);
+      await pool.query(`
+        DROP TRIGGER IF EXISTS update_provider_contact_followups_updated_at_trigger 
+        ON provider_contact_followups
+      `);
+      await pool.query(`
+        CREATE TRIGGER update_provider_contact_followups_updated_at_trigger
+          BEFORE UPDATE ON provider_contact_followups
+          FOR EACH ROW
+          EXECUTE FUNCTION update_provider_contact_followups_updated_at()
+      `);
+
+      console.log('✅ Created provider_contact_followups table and indexes');
+    } catch (e) {
+      console.error('Error ensuring provider_contact_followups exists:', e);
+      // Do not throw to avoid crashing scheduler loop
+    }
+  }
 
   /**
    * Schedule a follow-up SMS to provider 10 minutes after unlock
    */
   static async scheduleFollowUp(leadId, providerId, providerPhone, clientName) {
     try {
+      await this.ensureTableExists();
       // Check if follow-up already scheduled
       const existing = await pool.query(`
         SELECT * FROM provider_contact_followups 
@@ -47,17 +147,20 @@ class ProviderContactFollowUpService {
     try {
       const now = new Date();
       
+      await this.ensureTableExists();
+      const providersPk = await this.getProvidersPk();
       // Find follow-ups that are due to be sent
-      const result = await pool.query(`
+      const query = `
         SELECT f.*, l.client_name, p.phone as provider_phone, p.name as provider_name
         FROM provider_contact_followups f
         JOIN leads l ON f.lead_id = l.lead_id
-        JOIN providers p ON f.provider_id = p.provider_id
+        JOIN providers p ON f.provider_id = p.${providersPk}
         WHERE f.status = 'SCHEDULED' 
           AND f.sent_at <= $1
         ORDER BY f.sent_at ASC
         LIMIT 50
-      `, [now]);
+      `;
+      const result = await pool.query(query, [now]);
 
       if (result.rows.length === 0) {
         return; // No follow-ups to send
@@ -119,15 +222,18 @@ class ProviderContactFollowUpService {
       }
 
       // Find the most recent follow-up for this provider
-      const result = await pool.query(`
+      await this.ensureTableExists();
+      const providersPk = await this.getProvidersPk();
+      const selectSql = `
         SELECT f.*, p.name as provider_name, l.client_name
         FROM provider_contact_followups f
-        JOIN providers p ON f.provider_id = p.provider_id
+        JOIN providers p ON f.provider_id = p.${providersPk}
         JOIN leads l ON f.lead_id = l.lead_id
         WHERE p.phone = $1 AND f.status = 'SENT'
         ORDER BY f.sent_at DESC
         LIMIT 1
-      `, [providerPhone]);
+      `;
+      const result = await pool.query(selectSql, [providerPhone]);
 
       if (result.rows.length === 0) {
         return { handled: false, reason: 'No pending follow-up found' };
