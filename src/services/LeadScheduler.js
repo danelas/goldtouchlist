@@ -153,16 +153,27 @@ class LeadScheduler {
    */
   async processScheduledLead(scheduledLead) {
     const LeadProcessor = require('./LeadProcessor');
+    const Lead = require('../models/Lead');
+    const OpenAIService = require('./OpenAIService');
     
     try {
       console.log(`Processing scheduled lead: ${scheduledLead.lead_id} for provider ${scheduledLead.provider_id}`);
       
-      // Process the lead normally
+      // Load lead data needed for teaser/message formatting
+      const leadData = await Lead.getPublicFields(scheduledLead.lead_id);
+      let enhancement = null;
+      try {
+        enhancement = await OpenAIService.generateTeaserEnhancement(leadData);
+      } catch (e) {
+        console.warn('Enhancement generation failed (continuing):', e.message);
+      }
+
+      // Process the lead normally with full context
       await LeadProcessor.processProviderMatch(
         scheduledLead.lead_id,
         { provider_id: scheduledLead.provider_id, match_score: 100 },
-        null, // leadData will be fetched by processProviderMatch
-        null  // enhancement
+        leadData, // provide leadData for SMS/email formatting
+        enhancement  // enhancement text (optional)
       );
       
       // Mark as processed

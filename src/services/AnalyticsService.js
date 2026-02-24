@@ -199,7 +199,7 @@ class AnalyticsService {
     const result = await pool.query(`
       SELECT 
         'lead' as type,
-        l.lead_id as id,
+        l.lead_id::text as id,
         l.client_name as title,
         l.city as subtitle,
         l.service_type as details,
@@ -211,7 +211,7 @@ class AnalyticsService {
       
       SELECT 
         'unlock' as type,
-        CONCAT(u.lead_id, '-', u.provider_id) as id,
+        (u.lead_id::text || '-' || u.provider_id::text) as id,
         p.name as title,
         u.status as subtitle,
         l.service_type as details,
@@ -304,7 +304,7 @@ class AnalyticsService {
       JOIN providers p ON u.provider_id = p.id
       WHERE u.paid_at >= CURRENT_DATE - INTERVAL '${days} days'
       AND p.first_lead_used = false
-      GROUP BY DATE(u.paid_at), p.provider_id, p.name, p.phone
+      GROUP BY DATE(u.paid_at), p.id, p.name, p.phone
       ORDER BY date DESC, first_time_unlocks DESC
     `);
     return result.rows;

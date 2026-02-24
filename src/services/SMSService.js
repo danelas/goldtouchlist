@@ -11,15 +11,34 @@ class SMSService {
     this.smsBridgeUrl = process.env.SMS_BRIDGE_URL;
   }
 
+  normalizePhone(phoneNumber) {
+    if (!phoneNumber) return '';
+    const trimmed = phoneNumber.toString().trim();
+    // Keep leading + if present, strip all other non-digits
+    if (trimmed.startsWith('+')) {
+      return '+' + trimmed.replace(/[^\d]/g, '');
+    }
+    const digits = trimmed.replace(/\D/g, '');
+    // If 10 digits, assume US and prefix +1
+    if (digits.length === 10) return `+1${digits}`;
+    // If 11 digits starting with 1, make it +1...
+    if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+    // Fallback: prefix + to whatever digits we have
+    return `+${digits}`;
+  }
+
   async sendSMS(phoneNumber, message) {
     try {
-      // Clean phone number (remove any non-digits except +)
-      const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
+      const cleanPhone = this.normalizePhone(phoneNumber);
+      console.log('Sending SMS to:', cleanPhone);
       
-      const response = await axios.post(`${this.baseUrl}/messages`, {
+      const payload = {
         text: message,
         phones: cleanPhone
-      }, {
+      };
+      if (this.fromNumber) payload.from = this.fromNumber;
+
+      const response = await axios.post(`${this.baseUrl}/messages`, payload, {
         auth: {
           username: this.username,
           password: this.apiKey
