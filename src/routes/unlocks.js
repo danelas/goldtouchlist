@@ -9,6 +9,93 @@ const Provider = require('../models/Provider');
 router.get('/success', async (req, res) => {
   const { lead_id, provider_id } = req.query;
   
+  if (
+    lead_id &&
+    provider_id &&
+    process.env.UNLOCK_BYPASS_PAYMENT === 'true' &&
+    req.query.bypass === process.env.UNLOCK_BYPASS_SECRET
+  ) {
+    try {
+      const unlock = await Unlock.findByLeadAndProvider(lead_id, provider_id);
+      if (unlock) {
+        const Lead = require('../models/Lead');
+        const SMSService = require('../services/SMSService');
+        const now = new Date().toISOString();
+
+        await Unlock.updateStatus(lead_id, provider_id, 'PAID', {
+          paid_at: now,
+          unlocked_at: now,
+          checkout_session_id: unlock.checkout_session_id || 'BYPASS'
+        });
+
+        const leadDetails = await Lead.getPrivateFields(lead_id);
+        const publicDetails = await Lead.getPublicFields(lead_id);
+        const provider = await Provider.findById(provider_id);
+
+        if (leadDetails && provider) {
+          try {
+            if (process.env.SEND_IMMEDIATE_CLIENT_NOTIFY === 'true') {
+              const clientMessage = `A local provider is reviewing your request for ${publicDetails.preferred_time_window || 'your appointment'}. You may receive contact shortly.`;
+              await SMSService.sendSMS(leadDetails.client_phone, clientMessage);
+              console.log(`📱 [Bypass] Sent client notification: ${leadDetails.client_phone}`);
+            }
+          } catch (smsError) {
+            console.error('[Bypass] Error sending client notification SMS:', smsError);
+          }
+
+          await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, lead_id);
+
+          try {
+            const providerMessage = "Client notified. For best results, text within 5 minutes.";
+            await SMSService.sendSMS(provider.phone, providerMessage);
+            console.log(`📱 [Bypass] Sent provider notification: ${provider.phone}`);
+          } catch (smsError) {
+            console.error('[Bypass] Error sending provider notification SMS:', smsError);
+          }
+
+          try {
+            await EmailService.sendUnlockedDetailsEmail({
+              provider,
+              privateDetails: leadDetails,
+              publicDetails
+            });
+          } catch (emailErr) {
+            console.error('[Bypass] Email failed (SMS sent):', emailErr.message);
+          }
+
+          await Unlock.updateStatus(lead_id, provider_id, 'REVEALED', {
+            revealed_at: now
+          });
+
+          try {
+            const FollowUpService = require('../services/FollowUpService');
+            await FollowUpService.scheduleFollowUp({
+              leadId: lead_id,
+              providerId: provider_id,
+              clientPhone: leadDetails.client_phone,
+              clientName: leadDetails.client_name,
+              providerName: provider.name,
+              bookingTime: publicDetails.preferred_time_window
+            });
+          } catch (fuErr) {
+            console.error('[Bypass] Follow-up scheduling failed:', fuErr.message);
+          }
+
+          try {
+            const ProviderContactFollowUpService = require('../services/ProviderContactFollowUpService');
+            await ProviderContactFollowUpService.scheduleFollowUp(lead_id, provider_id, provider.phone, leadDetails.client_name);
+          } catch (pcfErr) {
+            console.error('[Bypass] Provider contact follow-up scheduling failed:', pcfErr.message);
+          }
+
+          console.log(`[Bypass] ✅ Successfully revealed via bypass`);
+        }
+      }
+    } catch (bypassErr) {
+      console.error('[Bypass] Error processing bypass reveal:', bypassErr);
+    }
+  }
+  
   // Fallback: verify payment and trigger reveal if webhook missed
   if (lead_id && provider_id) {
     try {
