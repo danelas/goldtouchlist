@@ -16,6 +16,7 @@ const testProviderRoutes = require('./routes/test-provider');
 const manualMigrationRoutes = require('./routes/manual-migration');
 const debugWordPressRoutes = require('./routes/debug-wordpress');
 const analyticsRoutes = require('./routes/analytics');
+const geoRoutes = require('./routes/geo');
 const recoveryRoutes = require('./routes/recovery');
 const diagnosticsRoutes = require('./routes/diagnostics');
 const stripeDiagnosticsRoutes = require('./routes/stripe-diagnostics');
@@ -51,7 +52,8 @@ const corsOptions = {
       'https://pay.goldtouchlist.com',
       'http://localhost:3000',
       'http://localhost:10000',
-      process.env.ADMIN_DASHBOARD_URL
+      process.env.ADMIN_DASHBOARD_URL,
+      process.env.WP_ORIGIN
     ].filter(Boolean);
 
     if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
@@ -143,6 +145,7 @@ app.use('/test', testProviderRoutes); // Test provider creation endpoints
 app.use('/migrate', manualMigrationRoutes); // Manual migration endpoints
 app.use('/debug', debugWordPressRoutes); // Debug WordPress webhook endpoints
 app.use('/analytics', analyticsRoutes);
+app.use('/geo', geoRoutes);
 app.use('/recovery', recoveryRoutes);
 app.use('/diagnostics', diagnosticsRoutes);
 app.use('/stripe-diagnostics', stripeDiagnosticsRoutes);

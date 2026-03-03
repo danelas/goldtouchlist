@@ -2,6 +2,7 @@ const Lead = require('../models/Lead');
 const LeadProcessor = require('../services/LeadProcessor');
 const Joi = require('joi');
 const crypto = require('crypto');
+const GeoService = require('../services/GeoService');
 
 // Flexible validation schema for FluentForms data
 const fluentFormsSchema = Joi.object({
@@ -318,6 +319,50 @@ class WebhookController {
         }
       }
 
+      // Optional geo enforcement: block out-of-range targeted submissions
+      try {
+        const geoEnforce = (process.env.GEO_ENFORCE ?? 'true') === 'true';
+        const radiusMiles = parseInt(process.env.GEO_RADIUS_MILES || '40', 10);
+        if (geoEnforce && value.provider_id && value.cityzip) {
+          // Provider/listing location may be passed via hidden fields on the listing form
+          const listingCity = value.listing_city;
+          const listingLocation = value.listing_location;
+          const providerLocation = value.provider_location; // e.g., "Miami, FL" or full address
+
+          let providerQuery = null;
+          if (providerLocation && providerLocation.toString().trim()) {
+            providerQuery = providerLocation.toString().trim();
+          } else if ((listingCity && listingCity.toString().trim()) || (listingLocation && listingLocation.toString().trim())) {
+            const parts = [];
+            if (listingCity && listingCity.toString().trim()) parts.push(listingCity.toString().trim());
+            if (listingLocation && listingLocation.toString().trim()) parts.push(listingLocation.toString().trim());
+            providerQuery = parts.join(', ');
+          }
+
+          if (providerQuery) {
+            const result = await GeoService.withinRadius(providerQuery, value.cityzip, radiusMiles);
+            if (!result.allowed) {
+              console.log(`🚫 Out-of-range submission: provider="${providerQuery}", cityzip="${value.cityzip}", distance=${result.distanceMiles?.toFixed(1)}mi > radius=${radiusMiles}mi`);
+              // Create the lead for analytics but DO NOT notify the provider
+              const lead = await Lead.create(value);
+              console.log('Lead created (out-of-range, provider not notified):', lead.lead_id);
+              return res.json({
+                success: true,
+                out_of_range: true,
+                leadId: lead.lead_id,
+                message: 'Selected provider is outside travel radius',
+                distance_miles: result.distanceMiles,
+                radius_miles: radiusMiles
+              });
+            }
+          } else {
+            console.log('Geo enforcement enabled but no provider/listing location provided; skipping distance check');
+          }
+        }
+      } catch (geoErr) {
+        console.error('Geo enforcement error (continuing without block):', geoErr.message);
+      }
+
       // Create the lead
       const lead = await Lead.create(value);
       console.log('Lead created:', lead.lead_id);
@@ -549,9 +594,11 @@ class WebhookController {
       if (leadDetails && provider) {
         // Send client notification that provider is reviewing
         try {
-          const clientMessage = `A local provider is reviewing your request for ${publicDetails.preferred_time_window || 'your appointment'}. You may receive contact shortly.`;
-          await SMSService.sendSMS(leadDetails.client_phone, clientMessage);
-          console.log(`📱 Sent client notification: ${leadDetails.client_phone}`);
+          if (process.env.SEND_IMMEDIATE_CLIENT_NOTIFY === 'true') {
+            const clientMessage = `A local provider is reviewing your request for ${publicDetails.preferred_time_window || 'your appointment'}. You may receive contact shortly.`;
+            await SMSService.sendSMS(leadDetails.client_phone, clientMessage);
+            console.log(`📱 Sent client notification: ${leadDetails.client_phone}`);
+          }
         } catch (smsError) {
           console.error('Error sending client notification SMS:', smsError);
         }

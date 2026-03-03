@@ -14,11 +14,13 @@ class ProviderContactFollowUpService {
         ORDER BY CASE column_name WHEN 'provider_id' THEN 0 ELSE 1 END
         LIMIT 1
       `);
-      this.PROVIDERS_PK = result.rows[0]?.column_name || 'provider_id';
+      // Prefer existing column; default safely to 'id' if detection fails
+      this.PROVIDERS_PK = result.rows[0]?.column_name || 'id';
+      console.log('Detected providers PK column:', this.PROVIDERS_PK);
       return this.PROVIDERS_PK;
     } catch (e) {
-      console.error('Error detecting providers PK, defaulting to provider_id:', e.message);
-      this.PROVIDERS_PK = 'provider_id';
+      console.error('Error detecting providers PK, defaulting to id:', e.message);
+      this.PROVIDERS_PK = 'id';
       return this.PROVIDERS_PK;
     }
   }
@@ -40,8 +42,8 @@ class ProviderContactFollowUpService {
       if (dt === 'character varying') return len ? `VARCHAR(${len})` : 'VARCHAR';
       return dt.toUpperCase();
     } catch (e) {
-      console.error('Error detecting providers PK type, defaulting to INTEGER:', e.message);
-      return 'INTEGER';
+      console.error('Error detecting providers PK type, defaulting to VARCHAR(255):', e.message);
+      return 'VARCHAR(255)';
     }
   }
 

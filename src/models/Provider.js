@@ -27,18 +27,38 @@ class Provider {
   }
 
   static async findByPhone(phoneNumber) {
-    // Normalize phone number - try multiple formats
-    const cleanPhone = phoneNumber.replace(/[^\d]/g, ''); // Remove all non-digits
-    
-    // Try different phone number formats
-    const phoneFormats = [
-      phoneNumber, // Original format
-      `+${cleanPhone}`, // Add + prefix
-      `+1${cleanPhone.substring(1)}`, // Add +1 prefix if it starts with 1
-      cleanPhone, // Just digits
-      `1${cleanPhone}` // Add 1 prefix
-    ];
-    
+    // Normalize and try multiple plausible formats
+    const original = phoneNumber?.toString().trim() || '';
+    const digitsOnly = original.replace(/[^\d]/g, '');
+
+    // Compute best E.164 candidate
+    let e164 = '';
+    if (digitsOnly.length === 10) {
+      e164 = `+1${digitsOnly}`;
+    } else if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+      e164 = `+${digitsOnly}`;
+    } else if (original.startsWith('+')) {
+      e164 = `+${digitsOnly}`;
+    } else if (digitsOnly.length > 0) {
+      e164 = `+${digitsOnly}`;
+    }
+
+    // Build candidate list and de-duplicate
+    const candidatesRaw = [
+      original,
+      e164,
+      `+${digitsOnly}`,
+      digitsOnly,
+      digitsOnly.length === 10 ? `1${digitsOnly}` : undefined,
+      (digitsOnly.length === 11 && digitsOnly.startsWith('1')) ? digitsOnly : undefined
+    ].filter(Boolean);
+    const seen = new Set();
+    const phoneFormats = candidatesRaw.filter(v => {
+      if (seen.has(v)) return false;
+      seen.add(v);
+      return true;
+    });
+
     console.log('Trying phone formats:', phoneFormats);
     
     try {

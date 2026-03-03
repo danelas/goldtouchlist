@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 
-const FOLLOW_UP_AFTER_BOOKING_MINUTES = 15; // Send follow-up 15 minutes after booking date/time
+const FOLLOW_UP_AFTER_BOOKING_MINUTES = 5; // Send follow-up 5 minutes after booking date/time
 const FOLLOW_UP_FALLBACK_MINUTES = 30; // Fallback: 30 minutes after reveal if no booking time
 const PROVIDER_REMINDER_DELAY_MINUTES = 15; // Remind provider 15 minutes after teaser if no unlock
 
@@ -19,7 +19,7 @@ class FollowUpService {
 
     // Check if a follow-up already exists for this lead+provider
     const existing = await pool.query(
-      'SELECT id FROM follow_ups WHERE lead_id = $1 AND provider_id = $2',
+      "SELECT id FROM follow_ups WHERE lead_id = $1 AND provider_id = $2 AND status IN ('SCHEDULED','SENT','RECOVERY_OFFERED','YES_REPLIED','NO_REPLIED','RECOVERY_ACCEPTED','EXPIRED')",
       [leadId, providerId]
     );
 
@@ -151,7 +151,7 @@ class FollowUpService {
         `, [followUp.id]);
 
         await SMSService.sendSMS(followUp.client_phone,
-          "Great! If you need anything else, we're here. Have a wonderful experience!\n\nYou can also browse other available providers here:\nhttps://goldtouchlist.com"
+          "Great! Enjoy your session. If you need anything else, we're here."
         );
 
         console.log(`📞 FollowUp #${followUp.id}: Client confirmed provider reached out ✅`);
@@ -166,7 +166,7 @@ class FollowUpService {
 
         // Offer recovery
         await SMSService.sendSMS(followUp.client_phone,
-          "Thanks for letting us know. Would you like us to connect you with another available provider in your area?\nReply YES to receive options."
+          "Sorry about that — we’ll check what happened. Would you like us to connect you with another available provider?\nReply YES to receive options."
         );
 
         await pool.query(`
@@ -214,7 +214,7 @@ class FollowUpService {
         `, [followUp.id]);
 
         await SMSService.sendSMS(followUp.client_phone,
-          "No problem. If you change your mind, feel free to submit a new request at goldtouchlist.com. Thank you!"
+          "Understood. We’re sorry we couldn’t connect you with the provider you wanted. We’ll review what happened. If you need help later, just reply here or visit goldtouchlist.com."
         );
 
         console.log(`📞 FollowUp #${followUp.id}: Client declined recovery`);

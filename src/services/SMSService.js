@@ -31,28 +31,62 @@ class SMSService {
     try {
       const cleanPhone = this.normalizePhone(phoneNumber);
       console.log('Sending SMS to:', cleanPhone);
-      
-      const payload = {
+
+      const basePayload = {
         text: message,
         phones: cleanPhone
       };
-      if (this.fromNumber) payload.from = this.fromNumber;
+      const useFrom = !!this.fromNumber;
+      const primaryPayload = useFrom ? { ...basePayload, from: this.fromNumber } : basePayload;
 
-      const response = await axios.post(`${this.baseUrl}/messages`, payload, {
-        auth: {
-          username: this.username,
-          password: this.apiKey
-        },
-        headers: {
-          'Content-Type': 'application/json'
+      try {
+        const response = await axios.post(`${this.baseUrl}/messages`, primaryPayload, {
+          auth: {
+            username: this.username,
+            password: this.apiKey
+          },
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('SMS sent successfully:', response.data);
+        return response.data;
+      } catch (error) {
+        const status = error.response?.status;
+        const data = error.response?.data;
+        if (data?.errors) {
+          console.error('TextMagic validation errors:', data.errors);
         }
-      });
+        console.error('Error sending SMS:', data || error.message);
 
-      console.log('SMS sent successfully:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error sending SMS:', error.response?.data || error.message);
-      throw error;
+        if (useFrom && status === 400) {
+          console.log('Retrying SMS without explicit from number due to 400 response');
+          try {
+            const retryResponse = await axios.post(`${this.baseUrl}/messages`, basePayload, {
+              auth: {
+                username: this.username,
+                password: this.apiKey
+              },
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            console.log('SMS sent successfully on retry without from:', retryResponse.data);
+            return retryResponse.data;
+          } catch (retryError) {
+            const rData = retryError.response?.data;
+            if (rData?.errors) {
+              console.error('Retry TextMagic validation errors:', rData.errors);
+            }
+            console.error('Retry without from failed:', rData || retryError.message);
+            throw retryError;
+          }
+        }
+
+        throw error;
+      }
+    } catch (outerError) {
+      throw outerError;
     }
   }
 

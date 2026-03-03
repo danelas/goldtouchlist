@@ -41,9 +41,11 @@ router.get('/success', async (req, res) => {
           if (leadDetails && provider) {
             // Send client notification that provider is reviewing
             try {
-              const clientMessage = `A local provider is reviewing your request for ${publicDetails.preferred_time_window || 'your appointment'}. You may receive contact shortly.`;
-              await SMSService.sendSMS(leadDetails.client_phone, clientMessage);
-              console.log(`📱 [Fallback] Sent client notification: ${leadDetails.client_phone}`);
+              if (process.env.SEND_IMMEDIATE_CLIENT_NOTIFY === 'true') {
+                const clientMessage = `A local provider is reviewing your request for ${publicDetails.preferred_time_window || 'your appointment'}. You may receive contact shortly.`;
+                await SMSService.sendSMS(leadDetails.client_phone, clientMessage);
+                console.log(`📱 [Fallback] Sent client notification: ${leadDetails.client_phone}`);
+              }
             } catch (smsError) {
               console.error('[Fallback] Error sending client notification SMS:', smsError);
             }

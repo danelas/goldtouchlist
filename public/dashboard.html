@@ -462,6 +462,37 @@
             }
         }
 
+        async function fetchProviderContacts() {
+            try {
+                const response = await fetch('/analytics/dashboard/provider-contacts?days=30');
+                const data = await response.json();
+                if (data.success) {
+                    renderProviderContactChart(data.data);
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                // Fallback: show error inside the chart card
+                const chartCard = document.getElementById('providerContactChart').parentElement;
+                chartCard.insertAdjacentHTML('beforeend', `<div class="error">Error loading provider contact data: ${error.message}</div>`);
+            }
+        }
+
+        async function fetchFirstTimeFree() {
+            try {
+                const response = await fetch('/analytics/dashboard/first-time-free?days=30');
+                const data = await response.json();
+                if (data.success) {
+                    renderFirstTimeFreeTable(data.data);
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                document.getElementById('firstTimeFreeLoading').innerHTML = 
+                    `<div class="error">Error loading first-time free data: ${error.message}</div>`;
+            }
+        }
+
         // Render functions
         function renderSummary(summary) {
             const html = `

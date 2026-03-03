@@ -21,10 +21,22 @@ class StripeService {
 
       // Check if there's already an active payment session
       const existingUnlock = await Unlock.findByLeadAndProvider(leadId, providerId);
-      if (existingUnlock && existingUnlock.payment_link_url && 
-          existingUnlock.status === 'PAYMENT_LINK_SENT') {
-        console.log('Existing payment link found, returning existing URL');
-        return existingUnlock.payment_link_url;
+      if (existingUnlock && existingUnlock.payment_link_url && existingUnlock.status === 'PAYMENT_LINK_SENT') {
+        try {
+          if (existingUnlock.checkout_session_id) {
+            const existingSession = await stripe.checkout.sessions.retrieve(existingUnlock.checkout_session_id);
+            console.log('Existing session status:', existingSession.status);
+            if (existingSession.status === 'open') {
+              console.log('Existing open payment session found, reusing URL');
+              return existingUnlock.payment_link_url;
+            }
+            console.log('Existing session is not open (likely expired), creating a new session');
+          } else {
+            console.log('Existing payment link present but no checkout_session_id stored; creating a new session');
+          }
+        } catch (checkErr) {
+          console.log('Could not retrieve existing checkout session, creating a new session:', checkErr.message);
+        }
       }
 
       // Determine price from unlock or from service type
@@ -46,8 +58,8 @@ class StripeService {
             price_data: {
               currency: 'usd',
               product_data: {
-                name: 'Lead Contact Details Access',
-                description: 'Unlock full client contact information for this lead',
+                name: 'Client Contact Details Access',
+                description: 'Unlock full contact information for this client',
               },
               unit_amount: priceCents,
             },
@@ -146,8 +158,8 @@ class StripeService {
             price_data: {
               currency: 'usd',
               product_data: {
-                name: 'Lead Contact Details Access',
-                description: 'Unlock full client contact information for this lead',
+                name: 'Client Contact Details Access',
+                description: 'Unlock full contact information for this client',
               },
               unit_amount: priceCents,
             },

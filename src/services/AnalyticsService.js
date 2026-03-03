@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const DASHBOARD_TZ = process.env.DASHBOARD_TZ || 'America/New_York';
 
 class AnalyticsService {
 
@@ -44,7 +45,7 @@ class AnalyticsService {
         l.city,
         COUNT(DISTINCT l.lead_id) as leads_today,
         COUNT(DISTINCT u.lead_id) as unlocks_today,
-        COUNT(DISTINCT u.lead_id) as paid_today,
+        COUNT(DISTINCT CASE WHEN u.status = 'REVEALED' THEN u.lead_id END) as paid_today,
         ROUND(
           COUNT(DISTINCT u.lead_id) * 100.0 / 
           NULLIF(COUNT(DISTINCT l.lead_id), 0), 2
@@ -55,8 +56,8 @@ class AnalyticsService {
         ) as paid_rate_percent
       FROM leads l
       LEFT JOIN unlocks u ON l.lead_id = u.lead_id 
-        AND DATE(u.created_at) = CURRENT_DATE
-      WHERE DATE(l.created_at) = CURRENT_DATE
+        AND (u.created_at AT TIME ZONE '${DASHBOARD_TZ}')::date = (now() AT TIME ZONE '${DASHBOARD_TZ}')::date
+      WHERE (l.created_at AT TIME ZONE '${DASHBOARD_TZ}')::date = (now() AT TIME ZONE '${DASHBOARD_TZ}')::date
       GROUP BY l.city
       ORDER BY leads_today DESC, unlock_rate_percent DESC
     `);
@@ -232,22 +233,38 @@ class AnalyticsService {
    */
   static async getDashboardSummary() {
     const [leadsToday, paidUnlocksToday, revenueToday, totalRevenue, firstTimeFreeToday, providerContactsToday] = await Promise.all([
-      pool.query('SELECT COUNT(*) as count FROM leads WHERE DATE(created_at) = CURRENT_DATE'),
-      pool.query('SELECT COUNT(*) as count FROM unlocks WHERE DATE(paid_at) = CURRENT_DATE'),
-      pool.query('SELECT COALESCE(SUM(price_cents), 0) as cents FROM unlocks WHERE DATE(paid_at) = CURRENT_DATE'),
+      pool.query(`
+        SELECT COUNT(*) as count 
+        FROM leads 
+        WHERE (created_at AT TIME ZONE '${DASHBOARD_TZ}')::date = (now() AT TIME ZONE '${DASHBOARD_TZ}')::date
+      `),
+      pool.query(`
+        SELECT COUNT(*) as count 
+        FROM unlocks 
+        WHERE paid_at IS NOT NULL
+          AND (paid_at AT TIME ZONE '${DASHBOARD_TZ}')::date = (now() AT TIME ZONE '${DASHBOARD_TZ}')::date
+      `),
+      pool.query(`
+        SELECT COALESCE(SUM(price_cents), 0) as cents 
+        FROM unlocks 
+        WHERE paid_at IS NOT NULL
+          AND (paid_at AT TIME ZONE '${DASHBOARD_TZ}')::date = (now() AT TIME ZONE '${DASHBOARD_TZ}')::date
+      `),
       pool.query('SELECT COALESCE(SUM(price_cents), 0) as cents FROM unlocks WHERE paid_at IS NOT NULL'),
       pool.query(`
         SELECT COUNT(DISTINCT u.provider_id) as count 
         FROM unlocks u 
         JOIN providers p ON u.provider_id = p.id 
-        WHERE DATE(u.paid_at) = CURRENT_DATE 
-        AND p.first_lead_used = false
+        WHERE u.paid_at IS NOT NULL
+          AND (u.paid_at AT TIME ZONE '${DASHBOARD_TZ}')::date = (now() AT TIME ZONE '${DASHBOARD_TZ}')::date 
+          AND p.first_lead_used = false
       `),
       pool.query(`
         SELECT COUNT(*) as count 
         FROM provider_contact_followups 
-        WHERE DATE(responded_at) = CURRENT_DATE 
-        AND response_value = 1
+        WHERE responded_at IS NOT NULL
+          AND (responded_at AT TIME ZONE '${DASHBOARD_TZ}')::date = (now() AT TIME ZONE '${DASHBOARD_TZ}')::date 
+          AND response_value = 1
       `)
     ]);
 
