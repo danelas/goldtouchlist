@@ -16,21 +16,40 @@ router.get('/success', async (req, res) => {
     req.query.bypass === process.env.UNLOCK_BYPASS_SECRET
   ) {
     try {
-      const unlock = await Unlock.findByLeadAndProvider(lead_id, provider_id);
+      // Resolve non-UUID lead_id by prefix if necessary
+      let resolvedLeadId = lead_id;
+      let resolvedProviderId = provider_id;
+      const uuidV4Regex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+      if (!uuidV4Regex.test(lead_id)) {
+        const pool = require('../config/database');
+        const lookup = await pool.query(
+          `SELECT lead_id, provider_id FROM unlocks WHERE lead_id::text LIKE $1 ORDER BY created_at DESC LIMIT 1`,
+          [`${lead_id}%`]
+        );
+        if (lookup.rows.length > 0) {
+          resolvedLeadId = lookup.rows[0].lead_id;
+          resolvedProviderId = lookup.rows[0].provider_id;
+          console.log(`[Bypass] Resolved lead prefix ${lead_id} -> ${resolvedLeadId} (provider ${resolvedProviderId})`);
+        } else {
+          console.log(`[Bypass] No unlock found matching lead prefix: ${lead_id}`);
+        }
+      }
+
+      const unlock = await Unlock.findByLeadAndProvider(resolvedLeadId, resolvedProviderId);
       if (unlock) {
         const Lead = require('../models/Lead');
         const SMSService = require('../services/SMSService');
         const now = new Date().toISOString();
 
-        await Unlock.updateStatus(lead_id, provider_id, 'PAID', {
+        await Unlock.updateStatus(resolvedLeadId, resolvedProviderId, 'PAID', {
           paid_at: now,
           unlocked_at: now,
           checkout_session_id: unlock.checkout_session_id || 'BYPASS'
         });
 
-        const leadDetails = await Lead.getPrivateFields(lead_id);
-        const publicDetails = await Lead.getPublicFields(lead_id);
-        const provider = await Provider.findById(provider_id);
+        const leadDetails = await Lead.getPrivateFields(resolvedLeadId);
+        const publicDetails = await Lead.getPublicFields(resolvedLeadId);
+        const provider = await Provider.findById(resolvedProviderId);
 
         if (leadDetails && provider) {
           try {
@@ -43,7 +62,7 @@ router.get('/success', async (req, res) => {
             console.error('[Bypass] Error sending client notification SMS:', smsError);
           }
 
-          await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, lead_id);
+          await SMSService.sendRevealDetails(provider.phone, leadDetails, publicDetails, resolvedLeadId);
 
           try {
             const providerMessage = "Client notified. For best results, text within 5 minutes.";
@@ -63,15 +82,15 @@ router.get('/success', async (req, res) => {
             console.error('[Bypass] Email failed (SMS sent):', emailErr.message);
           }
 
-          await Unlock.updateStatus(lead_id, provider_id, 'REVEALED', {
+          await Unlock.updateStatus(resolvedLeadId, resolvedProviderId, 'REVEALED', {
             revealed_at: now
           });
 
           try {
             const FollowUpService = require('../services/FollowUpService');
             await FollowUpService.scheduleFollowUp({
-              leadId: lead_id,
-              providerId: provider_id,
+              leadId: resolvedLeadId,
+              providerId: resolvedProviderId,
               clientPhone: leadDetails.client_phone,
               clientName: leadDetails.client_name,
               providerName: provider.name,
@@ -83,7 +102,7 @@ router.get('/success', async (req, res) => {
 
           try {
             const ProviderContactFollowUpService = require('../services/ProviderContactFollowUpService');
-            await ProviderContactFollowUpService.scheduleFollowUp(lead_id, provider_id, provider.phone, leadDetails.client_name);
+            await ProviderContactFollowUpService.scheduleFollowUp(resolvedLeadId, resolvedProviderId, provider.phone, leadDetails.client_name);
           } catch (pcfErr) {
             console.error('[Bypass] Provider contact follow-up scheduling failed:', pcfErr.message);
           }
