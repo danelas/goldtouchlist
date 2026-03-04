@@ -231,7 +231,7 @@ class SMSService {
     const sessionLenNum = (sessionLenRaw && sessionLenRaw.toString().match(/\d+/)) 
       ? parseInt(sessionLenRaw.toString().match(/\d+/)[0], 10) 
       : null;
-    const sessionLenClean = sessionLenNum ? `${sessionLenNum} min` : '60 min';
+    const sessionLenClean = sessionLenNum ? `${sessionLenNum} min` : '';
     const sessionLenMinutes = sessionLenNum || 60;
 
     // Prefer ZIP when available; fall back to city, then any raw cityzip
@@ -241,6 +241,9 @@ class SMSService {
       || '';
 
     const serviceTypeText = leadData.service_type ? leadData.service_type.toString() : '';
+    const serviceLine = serviceTypeText
+      ? (sessionLenClean ? `${serviceTypeText} – ${sessionLenClean}` : `${serviceTypeText}`)
+      : (sessionLenClean ? `${sessionLenClean}` : '');
     const isCleaning = serviceTypeText.toLowerCase().includes('clean');
     let extraDetails = '';
     if (isCleaning && leadData.notes_snippet) {
@@ -248,7 +251,7 @@ class SMSService {
     }
 
     return `New request – ${locationStr} ${dateLabel}
-${serviceTypeText} – ${sessionLenClean}
+${serviceLine}
 ${extraDetails ? `${extraDetails}\n` : ''}${timeBucketText}
 Exclusive for ${sessionLenMinutes} minutes
 $${(priceCents / 100).toFixed(0)} unlock
