@@ -21,7 +21,24 @@ class Lead {
     const exact_address = `${cityzip}${location ? `, ${location}` : ''}`;
     
     // Create notes snippet (max 160 chars, no PII)
-    const notes_snippet = `${type} session${length ? ` (${length})` : ''}${contactpref ? `, prefers ${contactpref}` : ''}`.substring(0, 160);
+    // For Cleaning form, include extra fields where available
+    let notes_snippet = `${type} session${length ? ` (${length})` : ''}${contactpref ? `, prefers ${contactpref}` : ''}`;
+    if ((type || '').toString().toLowerCase().includes('clean')) {
+      const inputs = (leadData && typeof leadData.inputs === 'object') ? leadData.inputs : null;
+      const dropdown3 = (inputs && inputs.dropdown_3) || leadData['inputs.dropdown_3'] || leadData.inputs_dropdown_3;
+      const propertyType = leadData.propertytype || leadData.PropertyType || leadData['Property Type'];
+      const service = leadData.service || leadData['What type of cleaning service do you need?'];
+      const frequency = leadData.service_frequency || leadData['Service Frequency'] || leadData.frequency;
+      const parts = [];
+      if (dropdown3 && String(dropdown3).trim()) parts.push(`Type: ${dropdown3}`);
+      if (propertyType && String(propertyType).trim()) parts.push(`Property Type: ${propertyType}`);
+      if (service && String(service).trim()) parts.push(`Service: ${service}`);
+      if (frequency && String(frequency).trim()) parts.push(`Frequency: ${frequency}`);
+      if (parts.length > 0) {
+        notes_snippet = parts.join(' | ');
+      }
+    }
+    notes_snippet = notes_snippet.substring(0, 160);
 
     const query = `
       INSERT INTO leads (

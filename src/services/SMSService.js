@@ -240,9 +240,16 @@ class SMSService {
       || (leadData.cityzip && leadData.cityzip.toString().trim())
       || '';
 
+    const serviceTypeText = leadData.service_type ? leadData.service_type.toString() : '';
+    const isCleaning = serviceTypeText.toLowerCase().includes('clean');
+    let extraDetails = '';
+    if (isCleaning && leadData.notes_snippet) {
+      extraDetails = leadData.notes_snippet.toString().replace(/\s*\|\s*/g, '\n');
+    }
+
     return `New request – ${locationStr} ${dateLabel}
-${leadData.service_type} – ${sessionLenClean}
-${timeBucketText}
+${serviceTypeText} – ${sessionLenClean}
+${extraDetails ? `${extraDetails}\n` : ''}${timeBucketText}
 Exclusive for ${sessionLenMinutes} minutes
 $${(priceCents / 100).toFixed(0)} unlock
 Reply Y to unlock & view client`;
