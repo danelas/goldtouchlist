@@ -216,9 +216,16 @@ class ProviderContactFollowUpService {
    */
   static async handleProviderResponse(providerPhone, response) {
     try {
-      // Parse response (expecting 1 or 2)
-      const responseValue = parseInt(response.trim());
-      
+      // Normalize response (accept 1/2 and YES/NO/NOT YET)
+      const raw = (response || '').toString().trim().toUpperCase();
+      let responseValue = NaN;
+      if (raw === '1' || raw === 'YES' || raw === 'Y') responseValue = 1;
+      if (raw === '2' || raw === 'NO' || raw === 'N' || raw === 'NOT YET' || raw === 'NOT') responseValue = 2;
+      if (isNaN(responseValue)) {
+        // Try numeric parse as fallback
+        const num = parseInt(raw, 10);
+        if (num === 1 || num === 2) responseValue = num;
+      }
       if (responseValue !== 1 && responseValue !== 2) {
         return { handled: false, reason: 'Invalid response format' };
       }

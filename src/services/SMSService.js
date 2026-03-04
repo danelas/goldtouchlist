@@ -373,6 +373,17 @@ Thanks for using Gold Touch List!`;
       
       console.log('Found provider:', JSON.stringify(provider, null, 2));
 
+      // Provider contact follow-up responses (take priority over unlock flow)
+      try {
+        const ProviderContactFollowUpService = require('./ProviderContactFollowUpService');
+        const followUpHandled = await ProviderContactFollowUpService.handleProviderResponse(phoneNumber, originalMessage);
+        if (followUpHandled && followUpHandled.handled) {
+          return followUpHandled; // Confirmation SMS sent inside the service
+        }
+      } catch (pfErr) {
+        console.error('Error checking provider follow-up response:', pfErr.message);
+      }
+
       // Check rate limiting  
       const providerId = provider.id || provider.provider_id;
       const rateLimitInfo = await Provider.getRateLimitInfo(providerId);
