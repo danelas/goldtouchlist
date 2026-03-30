@@ -425,13 +425,21 @@ class WebhookController {
         return res.status(400).send('Webhook Error: Missing request body');
       }
       
-      console.log('Attempting to construct event with:');
-      console.log('- Body type:', typeof req.body);
-      console.log('- Body length:', req.body.length || 0);
-      console.log('- Signature present:', !!sig);
-      console.log('- Secret configured:', !!endpointSecret);
+      // Use rawBody (Buffer) saved by express.json verify callback in server.js
+      const payload = req.rawBody || req.body;
       
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      console.log('Attempting to construct event with:');
+      console.log('- rawBody available:', !!req.rawBody);
+      console.log('- rawBody is Buffer:', Buffer.isBuffer(req.rawBody));
+      console.log('- payload type:', typeof payload);
+      console.log('- payload is Buffer:', Buffer.isBuffer(payload));
+      console.log('- payload length:', payload?.length || 0);
+      console.log('- Signature present:', !!sig);
+      console.log('- Signature preview:', sig ? sig.substring(0, 30) + '...' : 'NONE');
+      console.log('- Secret configured:', !!endpointSecret);
+      console.log('- Secret prefix:', endpointSecret ? endpointSecret.substring(0, 8) + '...' : 'NONE');
+      
+      event = stripe.webhooks.constructEvent(payload, sig, endpointSecret);
       console.log('✅ Webhook signature verified successfully');
     } catch (err) {
       console.error('Stripe webhook signature verification failed:', err.message);

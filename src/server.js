@@ -118,14 +118,15 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/public', express.static(path.join(__dirname, '..', 'public')));
 
 // Body parsing middleware
-// Note: Stripe webhook needs raw body, so we exclude it from JSON parsing
-app.use((req, res, next) => {
-  if (req.path === '/webhooks/stripe') {
-    next(); // Skip JSON parsing for Stripe webhook
-  } else {
-    express.json({ limit: '10mb' })(req, res, next);
+// The verify callback saves the raw body buffer so Stripe webhook signature
+// verification always has the exact bytes that were sent, regardless of
+// any JSON parsing that follows.
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
   }
-});
+}));
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging

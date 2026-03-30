@@ -52,8 +52,8 @@ router.get('/fluentforms', (req, res) => {
   });
 });
 
-// Stripe webhook endpoint (needs raw body)
-router.post('/stripe', express.raw({ type: 'application/json' }), WebhookController.handleStripeWebhook);
+// Stripe webhook endpoint (raw body captured via verify callback in server.js)
+router.post('/stripe', WebhookController.handleStripeWebhook);
 
 // GET handler for Stripe webhook (for testing connectivity)
 router.get('/stripe', (req, res) => {
